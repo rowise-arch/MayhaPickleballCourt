@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#12372a" />
+    <title>Mayha Courts — Book a court</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Mayha Courts home"><span class="brand-mark">M</span> MAYHA <b>COURTS</b></a>
+      <nav><a href="#book">Book a court</a><a href="#how-it-works">How it works</a></nav>
+      <button class="profile-btn" type="button" aria-label="Account">⌁</button>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">MAYHA, BATANGAS</p>
+          <h1>Find your<br /><em>perfect rally.</em></h1>
+          <p class="hero-text">Reserve a court in seconds. Show up, serve hard, and let the good games begin.</p>
+          <a class="primary-link" href="#book">Book a court <span>→</span></a>
+        </div>
+        <div class="court-art" aria-hidden="true">
+          <div class="sun"></div><div class="hill h1"></div><div class="hill h2"></div>
+          <div class="court"><i></i><i></i><i></i><i></i><b></b></div>
+          <div class="ball ball-one"></div><div class="ball ball-two"></div>
+          <p>PLAY<br />MORE</p>
+        </div>
+      </section>
+
+      <section class="booking-section" id="book">
+        <div class="section-heading"><p class="eyebrow">MAKE A RESERVATION</p><h2>Choose your game time.</h2></div>
+        <div class="booking-layout">
+          <div class="booking-card">
+            <div class="field-row">
+              <label>DATE <input id="booking-date" type="date" /></label>
+              <label>PLAYERS <select id="players"><option value="2">2 players</option><option value="3">3 players</option><option value="4" selected>4 players</option><option value="5+">5+ players</option></select></label>
+            </div>
+            <div class="court-tabs" role="tablist" aria-label="Court selection">
+              <button class="court-tab active" data-court="Court 1">Court 1 <small>Covered</small></button>
+              <button class="court-tab" data-court="Court 2">Court 2 <small>Open air</small></button>
+            </div>
+            <div class="times-heading"><span>AVAILABLE TIMES</span><span>₱250 / hour</span></div>
+            <div class="time-grid" id="time-grid"></div>
+          </div>
+          <aside class="summary-card">
+            <p class="eyebrow">YOUR RESERVATION</p>
+            <div class="summary-empty" id="summary-empty"><span>◌</span><p>Select a time slot<br />to continue.</p></div>
+            <div class="summary-details hidden" id="summary-details">
+              <h3 id="summary-court">Court 1</h3><p id="summary-date"></p><p id="summary-time"></p><p id="summary-players"></p>
+              <div class="total"><span>1 hour court rental</span><strong>₱250</strong></div>
+              <button class="book-btn" id="book-btn" type="button">Confirm booking <span>→</span></button>
+            </div>
+            <p class="login-note">No account required. We'll confirm with your details.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="how" id="how-it-works"><p class="eyebrow">EASY AS 1—2—3</p><h2>More playing, less planning.</h2><div class="steps"><article><span>01</span><h3>Pick a court</h3><p>Choose indoor cover or open-air play.</p></article><article><span>02</span><h3>Choose a time</h3><p>See live availability and reserve your slot.</p></article><article><span>03</span><h3>Hit the court</h3><p>Get your confirmation and bring your A-game.</p></article></div></section>
+    </main>
+
+    <dialog id="booking-dialog"><button class="dialog-close" id="dialog-close" aria-label="Close">×</button><div class="success-mark">✓</div><p class="eyebrow">BOOKING CONFIRMED</p><h2>See you on the court!</h2><p id="confirmation-text"></p><p class="dialog-note">We’ve saved your reservation. Please arrive 10 minutes early.</p><button class="book-btn" id="done-btn">Done</button></dialog>
+    <footer><span>© 2026 MAYHA COURTS</span><span>MADE FOR THE LOVE OF THE GAME</span></footer>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
