@@ -9,12 +9,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./auth.css" />
   </head>
   <body>
     <header class="topbar">
       <a class="brand" href="#top" aria-label="Mayha Courts home"><span class="brand-mark">M</span> MAYHA <b>COURTS</b></a>
       <nav><a href="#book">Book a court</a><a href="#how-it-works">How it works</a></nav>
-      <button class="profile-btn" type="button" aria-label="Account">⌁</button>
+      <button class="profile-btn" id="account-btn" type="button" aria-label="Account">⌁</button>
     </header>
 
     <main id="top">
@@ -56,7 +57,7 @@
               <div class="total"><span>1 hour court rental</span><strong>₱250</strong></div>
               <button class="book-btn" id="book-btn" type="button">Confirm booking <span>→</span></button>
             </div>
-            <p class="login-note">No account required. We'll confirm with your details.</p>
+            <p class="login-note" id="login-note">Create an account to reserve your slot.</p>
           </aside>
         </div>
       </section>
@@ -65,8 +66,13 @@
     </main>
 
     <dialog id="booking-dialog"><button class="dialog-close" id="dialog-close" aria-label="Close">×</button><div class="success-mark">✓</div><p class="eyebrow">BOOKING CONFIRMED</p><h2>See you on the court!</h2><p id="confirmation-text"></p><p class="dialog-note">We’ve saved your reservation. Please arrive 10 minutes early.</p><button class="book-btn" id="done-btn">Done</button></dialog>
+    <dialog id="account-dialog" class="account-dialog">
+      <div class="auth-panel" id="auth-panel"><button class="dialog-close" id="auth-close" aria-label="Close">×</button><span class="brand-mark">M</span><p class="eyebrow">MAYHA COURTS</p><h2 id="auth-title">Create your account</h2><p class="auth-intro" id="auth-intro">Save your bookings and get ready to play.</p><form id="auth-form"><label id="name-field">FULL NAME<input id="auth-name" type="text" autocomplete="name" placeholder="Juan dela Cruz" /></label><label>EMAIL ADDRESS<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com" /></label><label>PASSWORD<input id="auth-password" type="password" autocomplete="new-password" required minlength="6" placeholder="At least 6 characters" /></label><p class="auth-error hidden" id="auth-error"></p><button class="book-btn" id="auth-submit" type="submit">Create account <span>→</span></button></form><p class="auth-switch" id="auth-switch">Already have an account? <button type="button" id="switch-auth">Sign in</button></p></div>
+      <div class="signed-in-panel hidden" id="signed-in-panel"><button class="dialog-close" id="account-close" aria-label="Close">×</button><div class="success-mark">✓</div><p class="eyebrow">SIGNED IN</p><h2>Welcome back.</h2><p id="account-email"></p><button class="book-btn" id="sign-out-btn" type="button">Sign out</button></div>
+    </dialog>
     <footer><span>© 2026 MAYHA COURTS</span><span>MADE FOR THE LOVE OF THE GAME</span></footer>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="./app.js"></script>
   </body>
