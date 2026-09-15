@@ -5,21 +5,29 @@ A responsive pickleball-court booking interface with a Firebase Realtime Databas
 ## Connect Firebase
 
 1. In the Firebase console, open **Build → Realtime Database** and create a database if it has not been created already.
-2. The Firebase web configuration has already been added to `app.js`.
-3. Before testing a booking, open the **Rules** tab and publish the following temporary development rules. Do **not** use these rules in production; the next build phase should add Firebase Authentication and stricter role-based rules.
+2. Open **Build → Authentication → Sign-in method**, enable **Email/Password**, and save.
+3. The Firebase web configuration has already been added to `app.js`.
+4. In Realtime Database, open the **Rules** tab and publish the following rules. They require customers to create an account before reading availability or creating a booking.
 
 ```text
 {
   "rules": {
     "bookings": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null",
+      "$date": {
+        "$court": {
+          "$time": {
+            ".write": "auth != null && !data.exists() && newData.child('ownerUid').val() === auth.uid",
+            ".validate": "newData.hasChildren(['court', 'date', 'time', 'players', 'createdAt', 'status', 'ownerUid']) && newData.child('court').isString() && newData.child('date').isString() && newData.child('time').isString() && newData.child('players').isString() && newData.child('status').val() === 'confirmed'"
+          }
+        }
+      }
     }
   }
 }
 ```
 
-Bookings are saved under `bookings/{date}/{court}/{time}`. Each time slot is committed with a Realtime Database transaction, preventing two users from confirming the same slot at once. Without Firebase configuration, the site remains usable in demo mode.
+Bookings are saved under `bookings/{date}/{court}/{time}`. Each time slot is committed with a Realtime Database transaction, preventing two users from confirming the same slot at once. Each booking is tied to the authenticated account that made it.
 
 ## Run locally
 

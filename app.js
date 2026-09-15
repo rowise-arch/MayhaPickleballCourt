@@ -11,6 +11,9 @@ const firebaseConfig = {
 };
 const firebaseReady = !Object.values(firebaseConfig).some(value => value.startsWith("YOUR_"));
 let db = null;
+let auth = null;
+let currentUser = null;
+let creatingAccount = true;
 const slots = ["7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM"];
 const demoBooked = new Set(["Court 1|9:00 AM", "Court 1|3:00 PM", "Court 2|10:00 AM"]);
 let selectedCourt = "Court 1";
@@ -29,11 +32,46 @@ async function connectFirebase() {
   if (!firebaseReady) return;
   try {
     if (!window.firebase) throw new Error("Firebase SDK did not load");
-    db = window.firebase.initializeApp(firebaseConfig).database();
+    const app = window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(firebaseConfig);
+    db = app.database();
+    auth = app.auth();
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      updateAccountUi();
+      loadAvailability();
+      if (!user && !document.querySelector("#account-dialog").open) document.querySelector("#account-dialog").showModal();
+    });
     loadAvailability();
   } catch (error) {
     console.warn("Firebase could not be reached; running in local demo mode.", error);
   }
+}
+function updateAccountUi() {
+  const accountButton = document.querySelector("#account-btn");
+  const note = document.querySelector("#login-note");
+  document.querySelector("#auth-panel").classList.toggle("hidden", !!currentUser);
+  document.querySelector("#signed-in-panel").classList.toggle("hidden", !currentUser);
+  if (currentUser) {
+    accountButton.textContent = (currentUser.displayName || currentUser.email || "A").charAt(0).toUpperCase();
+    document.querySelector("#account-email").textContent = currentUser.email;
+    note.textContent = `Signed in as ${currentUser.email}`;
+  } else {
+    accountButton.textContent = "⌁";
+    note.textContent = "Create an account to reserve your slot.";
+  }
+}
+function showAccountDialog() {
+  const dialog = document.querySelector("#account-dialog");
+  if (!dialog.open) dialog.showModal();
+}
+function setAuthMode(register) {
+  creatingAccount = register;
+  document.querySelector("#auth-title").textContent = register ? "Create your account" : "Welcome back";
+  document.querySelector("#auth-intro").textContent = register ? "Save your bookings and get ready to play." : "Sign in to manage your court bookings.";
+  document.querySelector("#name-field").classList.toggle("hidden", !register);
+  document.querySelector("#auth-submit").innerHTML = register ? "Create account <span>→</span>" : "Sign in <span>→</span>";
+  document.querySelector("#auth-switch").innerHTML = register ? "Already have an account? <button type=\"button\" id=\"switch-auth\">Sign in</button>" : "New to Mayha Courts? <button type=\"button\" id=\"switch-auth\">Create an account</button>";
+  document.querySelector("#switch-auth").addEventListener("click", () => setAuthMode(!creatingAccount));
 }
 function renderSlots() {
   document.querySelector("#time-grid").innerHTML = slots.map(time => {
@@ -66,9 +104,37 @@ async function loadAvailability() {
 document.querySelectorAll(".court-tab").forEach(tab => tab.addEventListener("click", () => { selectedCourt = tab.dataset.court; document.querySelectorAll(".court-tab").forEach(item => item.classList.toggle("active", item === tab)); loadAvailability(); }));
 dateInput.addEventListener("change", loadAvailability);
 document.querySelector("#players").addEventListener("change", updateSummary);
+document.querySelector("#account-btn").addEventListener("click", showAccountDialog);
+document.querySelector("#auth-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
+document.querySelector("#account-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
+document.querySelector("#sign-out-btn").addEventListener("click", () => auth.signOut().then(() => document.querySelector("#account-dialog").close()));
+document.querySelector("#auth-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const errorBox = document.querySelector("#auth-error");
+  const submit = document.querySelector("#auth-submit");
+  errorBox.classList.add("hidden");
+  if (!auth) { errorBox.textContent = "Firebase is unavailable. Check your internet connection and try again."; errorBox.classList.remove("hidden"); return; }
+  submit.disabled = true;
+  try {
+    const email = document.querySelector("#auth-email").value.trim();
+    const password = document.querySelector("#auth-password").value;
+    if (creatingAccount) {
+      const credential = await auth.createUserWithEmailAndPassword(email, password);
+      const name = document.querySelector("#auth-name").value.trim();
+      if (name) await credential.user.updateProfile({ displayName:name });
+    } else await auth.signInWithEmailAndPassword(email, password);
+    document.querySelector("#account-dialog").close();
+    document.querySelector("#auth-form").reset();
+  } catch (error) {
+    const messages = { "auth/email-already-in-use":"An account already exists with this email. Please sign in.", "auth/invalid-email":"Enter a valid email address.", "auth/weak-password":"Use a password with at least 6 characters.", "auth/invalid-credential":"Email or password is incorrect." };
+    errorBox.textContent = messages[error.code] || "We couldn't complete that request. Please try again.";
+    errorBox.classList.remove("hidden");
+  } finally { submit.disabled = false; }
+});
 document.querySelector("#book-btn").addEventListener("click", async () => {
+  if (!currentUser) { showAccountDialog(); return; }
   if (!selectedTime) return;
-  const booking = { court:selectedCourt, date:dateInput.value, time:selectedTime, players:document.querySelector("#players").value, createdAt:new Date().toISOString(), status:"confirmed" };
+  const booking = { court:selectedCourt, date:dateInput.value, time:selectedTime, players:document.querySelector("#players").value, createdAt:new Date().toISOString(), status:"confirmed", ownerUid:currentUser.uid };
   const button = document.querySelector("#book-btn"); button.disabled = true; button.textContent = "Saving…";
   try {
     if (db) {
