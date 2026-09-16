@@ -14,6 +14,7 @@ let db = null;
 let auth = null;
 let currentUser = null;
 let creatingAccount = false;
+let isAdmin = false;
 const slots = ["7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM"];
 const demoBooked = new Set(["Court 1|9:00 AM", "Court 1|3:00 PM", "Court 2|10:00 AM"]);
 let selectedCourt = "Court 1";
@@ -37,8 +38,14 @@ async function connectFirebase() {
     auth = app.auth();
     auth.onAuthStateChanged(user => {
       currentUser = user;
+      isAdmin = false;
       updateAccountUi();
       loadAvailability();
+      if (user) db.ref(`admins/${user.uid}`).once("value").then(snapshot => {
+        isAdmin = snapshot.val() === true;
+        if (isAdmin) window.location.replace("./admin.html");
+        else updateAccountUi();
+      });
       if (!user && !document.querySelector("#account-dialog").open) document.querySelector("#account-dialog").showModal();
     });
     loadAvailability();
@@ -51,6 +58,7 @@ function updateAccountUi() {
   const note = document.querySelector("#login-note");
   document.querySelector("#auth-panel").classList.toggle("hidden", !!currentUser);
   document.querySelector("#signed-in-panel").classList.toggle("hidden", !currentUser);
+  document.querySelector("#admin-link").classList.toggle("hidden", !isAdmin);
   if (currentUser) {
     accountButton.textContent = (currentUser.displayName || currentUser.email || "A").charAt(0).toUpperCase();
     document.querySelector("#account-email").textContent = currentUser.email;
