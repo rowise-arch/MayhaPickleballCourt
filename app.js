@@ -150,5 +150,6 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
 });
 document.querySelector("#dialog-close").addEventListener("click", () => document.querySelector("#booking-dialog").close());
 document.querySelector("#done-btn").addEventListener("click", () => document.querySelector("#booking-dialog").close());
+setAuthMode(false);
 renderSlots();
 connectFirebase();
