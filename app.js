@@ -143,7 +143,7 @@ document.querySelector("#auth-form").addEventListener("submit", async event => {
 document.querySelector("#book-btn").addEventListener("click", async () => {
   if (!currentUser) { showAccountDialog(); return; }
   if (!selectedTime) return;
-  const booking = { court:selectedCourt, date:dateInput.value, time:selectedTime, players:document.querySelector("#players").value, createdAt:new Date().toISOString(), status:"confirmed", ownerUid:currentUser.uid };
+  const booking = { court:selectedCourt, date:dateInput.value, time:selectedTime, players:document.querySelector("#players").value, createdAt:new Date().toISOString(), status:"confirmed", ownerUid:currentUser.uid, ownerName:currentUser.displayName || "Customer" };
   const button = document.querySelector("#book-btn"); button.disabled = true; button.textContent = "Saving…";
   try {
     if (db) {

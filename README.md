@@ -24,7 +24,7 @@ A responsive pickleball-court booking interface with a Firebase Realtime Databas
         "$court": {
           "$time": {
             ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || root.child('admins').child(auth.uid).val() === true)",
-            ".validate": "newData.hasChildren(['court', 'date', 'time', 'players', 'createdAt', 'status', 'ownerUid']) && newData.child('court').isString() && newData.child('date').isString() && newData.child('time').isString() && newData.child('players').isString() && (newData.child('status').val() === 'confirmed' || newData.child('status').val() === 'checked_in' || newData.child('status').val() === 'cancelled' || newData.child('status').val() === 'no_show')"
+            ".validate": "newData.hasChildren(['court', 'date', 'time', 'players', 'createdAt', 'status', 'ownerUid']) && newData.child('court').isString() && newData.child('date').isString() && newData.child('time').isString() && newData.child('players').isString() && (!newData.child('ownerName').exists() || newData.child('ownerName').isString()) && (newData.child('status').val() === 'confirmed' || newData.child('status').val() === 'checked_in' || newData.child('status').val() === 'cancelled' || newData.child('status').val() === 'no_show')"
           }
         }
       }
