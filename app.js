@@ -40,6 +40,18 @@ function hourlyRate(time) { const hour = slotHour(time); return hour >= 7 && hou
 function bookingPrice(time, duration = selectedDuration()) { return bookingSlots(time, duration).reduce((total, slot) => total + hourlyRate(slot), 0); }
 function isPastSlot(time) { if (dateInput.value !== localDateValue()) return false; const now = new Date(); const slotStart = new Date(); slotStart.setHours(slotHour(time), 0, 0, 0); return slotStart <= now; }
 function isBookedSlot(time) { return unavailable.has(time) || blockedSlots.has(time) || (!db && demoBooked.has(`${selectedCourt}|${time}`)); }
+function renderBlockNotice(data) {
+  const notice = document.querySelector("#block-notice");
+  const entries = Object.entries(data || {}).map(([savedKey, detail]) => ({ time:slots.find(time => timeKey(time) === savedKey), reason:detail.reason || "Court unavailable" })).filter(item => item.time);
+  if (!entries.length) { notice.classList.add("hidden"); notice.innerHTML = ""; return; }
+  const groups = entries.reduce((result, item) => { (result[item.reason] ||= []).push(item.time); return result; }, {});
+  notice.innerHTML = Object.entries(groups).map(([reason, times]) => {
+    const ordered = times.sort((a, b) => slots.indexOf(a) - slots.indexOf(b));
+    const start = ordered[0], end = endTime(ordered[ordered.length - 1]);
+    return `<div><strong>${start} – ${end}</strong> · ${reason}</div>`;
+  }).join("");
+  notice.classList.remove("hidden");
+}
 function isSlotAvailable(time) { const range = bookingSlots(time); return range.length === selectedDuration() && range.every(slot => !isPastSlot(slot) && !isBookedSlot(slot)); }
 function bookingPath() { return `bookings/${dateInput.value}/${courtKey(selectedCourt)}`; }
 async function connectFirebase() {
@@ -125,7 +137,7 @@ async function loadAvailability() {
   };
   scheduleRef.on("value", listener, error => console.warn("Could not load bookings from Firebase", error));
   stopAvailabilityListener = () => scheduleRef.off("value", listener);
-  db.ref(`blocks/${dateInput.value}/${courtKey(selectedCourt)}`).on("value", snapshot => { blockedSlots = new Set(Object.keys(snapshot.val() || {}).map(savedKey => slots.find(time => timeKey(time) === savedKey)).filter(Boolean)); renderSlots(); });
+  db.ref(`blocks/${dateInput.value}/${courtKey(selectedCourt)}`).on("value", snapshot => { const blockData = snapshot.val() || {}; blockedSlots = new Set(Object.keys(blockData).map(savedKey => slots.find(time => timeKey(time) === savedKey)).filter(Boolean)); renderBlockNotice(blockData); renderSlots(); });
 }
 document.querySelectorAll(".court-tab").forEach(tab => tab.addEventListener("click", () => { selectedCourt = tab.dataset.court; document.querySelectorAll(".court-tab").forEach(item => item.classList.toggle("active", item === tab)); loadAvailability(); }));
 dateInput.addEventListener("change", loadAvailability);
