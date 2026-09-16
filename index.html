@@ -16,7 +16,7 @@
   <body>
     <header class="topbar">
       <a class="brand" href="#top" aria-label="Mayha Square Pickleball Court home"><img class="brand-logo" src="./mayha-square-logo.png" alt="Mayha Square Pickleball Court logo" /> MAYHA <b>COURTS</b></a>
-      <nav><a href="#book">Book a court</a><a href="#how-it-works">How it works</a></nav>
+      <nav><a href="#book">Book a court</a><a href="./my-bookings.html">My bookings</a><a href="#how-it-works">How it works</a></nav>
       <button class="profile-btn" id="account-btn" type="button" aria-label="Account">⌁</button>
     </header>
 
@@ -44,6 +44,8 @@
               <label>DATE <input id="booking-date" type="date" /></label>
               <label>PLAYERS <select id="players"><option value="2">2 players</option><option value="3">3 players</option><option value="4" selected>4 players</option><option value="5+">5+ players</option></select></label>
               <label>PLAY TIME <select id="duration"><option value="1" selected>1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option><option value="5">5 hours</option><option value="6">6 hours</option></select></label>
+              <label>CONTACT NUMBER <input id="contact-phone" type="tel" autocomplete="tel" placeholder="09XX XXX XXXX" required /></label>
+              <label class="notes-field">BOOKING NOTE <input id="booking-note" type="text" maxlength="140" placeholder="Optional request or note" /></label>
             </div>
             <div class="court-tabs" role="tablist" aria-label="Court selection">
               <button class="court-tab active" data-court="Court 1">Court 1 <small>Covered</small></button>

@@ -1,1 +1,1 @@
-.field-row{grid-template-columns:repeat(3,1fr)}.rate-note{font:11px "DM Mono";letter-spacing:.1px;color:var(--muted);margin:0 0 18px}@media(max-width:700px){.field-row{grid-template-columns:1fr}}
+.field-row{grid-template-columns:repeat(3,1fr)}.notes-field{grid-column:span 2}.rate-note{font:11px "DM Mono";letter-spacing:.1px;color:var(--muted);margin:0 0 18px}@media(max-width:700px){.field-row{grid-template-columns:1fr}.notes-field{grid-column:auto}}

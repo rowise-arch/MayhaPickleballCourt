@@ -20,6 +20,7 @@ const demoBooked = new Set(["Court 1|9:00 AM", "Court 1|3:00 PM", "Court 2|10:00
 let selectedCourt = "Court 1";
 let selectedTime = null;
 let unavailable = new Set();
+let blockedSlots = new Set();
 let stopAvailabilityListener = null;
 const dateInput = document.querySelector("#booking-date");
 const durationInput = document.querySelector("#duration");
@@ -38,7 +39,7 @@ function bookingSlots(time, duration = selectedDuration()) { const start = slots
 function hourlyRate(time) { const hour = slotHour(time); return hour >= 7 && hour < 16 ? 120 : 160; }
 function bookingPrice(time, duration = selectedDuration()) { return bookingSlots(time, duration).reduce((total, slot) => total + hourlyRate(slot), 0); }
 function isPastSlot(time) { if (dateInput.value !== localDateValue()) return false; const now = new Date(); const slotStart = new Date(); slotStart.setHours(slotHour(time), 0, 0, 0); return slotStart <= now; }
-function isBookedSlot(time) { return unavailable.has(time) || (!db && demoBooked.has(`${selectedCourt}|${time}`)); }
+function isBookedSlot(time) { return unavailable.has(time) || blockedSlots.has(time) || (!db && demoBooked.has(`${selectedCourt}|${time}`)); }
 function isSlotAvailable(time) { const range = bookingSlots(time); return range.length === selectedDuration() && range.every(slot => !isPastSlot(slot) && !isBookedSlot(slot)); }
 function bookingPath() { return `bookings/${dateInput.value}/${courtKey(selectedCourt)}`; }
 async function connectFirebase() {
@@ -119,11 +120,12 @@ async function loadAvailability() {
   if (stopAvailabilityListener) stopAvailabilityListener();
   const scheduleRef = db.ref(bookingPath());
   const listener = snapshot => {
-    unavailable = new Set(Object.values(snapshot.val() || {}).map(booking => booking.time));
+    unavailable = new Set(Object.values(snapshot.val() || {}).filter(booking => booking.status !== "cancelled").map(booking => booking.time));
     renderSlots();
   };
   scheduleRef.on("value", listener, error => console.warn("Could not load bookings from Firebase", error));
   stopAvailabilityListener = () => scheduleRef.off("value", listener);
+  db.ref(`blocks/${dateInput.value}/${courtKey(selectedCourt)}`).on("value", snapshot => { blockedSlots = new Set(Object.keys(snapshot.val() || {}).map(savedKey => slots.find(time => timeKey(time) === savedKey)).filter(Boolean)); renderSlots(); });
 }
 document.querySelectorAll(".court-tab").forEach(tab => tab.addEventListener("click", () => { selectedCourt = tab.dataset.court; document.querySelectorAll(".court-tab").forEach(item => item.classList.toggle("active", item === tab)); loadAvailability(); }));
 dateInput.addEventListener("change", loadAvailability);
@@ -163,7 +165,9 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
   const reservedSlots = bookingSlots(selectedTime, duration);
   if (reservedSlots.length !== duration) { alert("Choose a time that leaves enough hours before midnight."); return; }
   const reservationId = `${currentUser.uid}-${Date.now()}`;
-  const booking = { court:selectedCourt, date:dateInput.value, players:document.querySelector("#players").value, createdAt:new Date().toISOString(), status:"confirmed", ownerUid:currentUser.uid, ownerName:currentUser.displayName || "Customer", startTime:selectedTime, durationHours:duration, totalPrice:bookingPrice(selectedTime, duration), reservationId };
+  const phone = document.querySelector("#contact-phone").value.trim();
+  if (!phone) { alert("Please enter a contact number."); return; }
+  const booking = { court:selectedCourt, date:dateInput.value, players:document.querySelector("#players").value, contactPhone:phone, note:document.querySelector("#booking-note").value.trim(), createdAt:new Date().toISOString(), status:"confirmed", paymentStatus:"unpaid", ownerUid:currentUser.uid, ownerName:currentUser.displayName || "Customer", startTime:selectedTime, durationHours:duration, totalPrice:bookingPrice(selectedTime, duration), reservationId };
   const button = document.querySelector("#book-btn"); button.disabled = true; button.textContent = "Saving…";
   try {
     if (db) {
