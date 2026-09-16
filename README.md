@@ -35,6 +35,8 @@ A responsive pickleball-court booking interface with a Firebase Realtime Databas
 
 Bookings are saved under `bookings/{date}/{court}/{time}`. The app supports four courts and 24-hour bookings in one-hour time slots. Each time slot is committed with a Realtime Database transaction, preventing two users from confirming the same slot at once. Each booking is tied to the authenticated account that made it.
 
+Court pricing is calculated per hour: ₱120 from 7 AM to 4 PM, and ₱160 from 4 PM to 7 AM. Customers can reserve one to six consecutive hours; the app disables a start time when any selected hour has passed or is already booked.
+
 ## Give an account administrator access
 
 1. Create the account through `index.html`, then sign in.

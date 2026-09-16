@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./auth.css" />
     <link rel="stylesheet" href="./branding.css" />
+    <link rel="stylesheet" href="./duration.css" />
   </head>
   <body>
     <header class="topbar">
@@ -42,6 +43,7 @@
             <div class="field-row">
               <label>DATE <input id="booking-date" type="date" /></label>
               <label>PLAYERS <select id="players"><option value="2">2 players</option><option value="3">3 players</option><option value="4" selected>4 players</option><option value="5+">5+ players</option></select></label>
+              <label>PLAY TIME <select id="duration"><option value="1" selected>1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option><option value="5">5 hours</option><option value="6">6 hours</option></select></label>
             </div>
             <div class="court-tabs" role="tablist" aria-label="Court selection">
               <button class="court-tab active" data-court="Court 1">Court 1 <small>Covered</small></button>
@@ -49,7 +51,8 @@
               <button class="court-tab" data-court="Court 3">Court 3 <small>Open air</small></button>
               <button class="court-tab" data-court="Court 4">Court 4 <small>Open air</small></button>
             </div>
-            <div class="times-heading"><span>AVAILABLE TIMES · OPEN 24/7</span><span>₱250 / hour</span></div>
+            <div class="times-heading"><span>AVAILABLE TIMES · OPEN 24/7</span><span id="rate-label">₱120–₱160 / hour</span></div>
+            <p class="rate-note">7 AM–4 PM: ₱120/hr &nbsp;·&nbsp; 4 PM–7 AM: ₱160/hr</p>
             <div class="time-grid" id="time-grid"></div>
           </div>
           <aside class="summary-card">
@@ -57,7 +60,7 @@
             <div class="summary-empty" id="summary-empty"><span>◌</span><p>Select a time slot<br />to continue.</p></div>
             <div class="summary-details hidden" id="summary-details">
               <h3 id="summary-court">Court 1</h3><p id="summary-date"></p><p id="summary-time"></p><p id="summary-players"></p>
-              <div class="total"><span>1 hour court rental</span><strong>₱250</strong></div>
+              <div class="total"><span id="rental-label">1 hour court rental</span><strong id="summary-total">₱120</strong></div>
               <button class="book-btn" id="book-btn" type="button">Confirm booking <span>→</span></button>
             </div>
             <p class="login-note" id="login-note">Create an account to reserve your slot.</p>

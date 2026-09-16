@@ -22,13 +22,23 @@ let selectedTime = null;
 let unavailable = new Set();
 let stopAvailabilityListener = null;
 const dateInput = document.querySelector("#booking-date");
-dateInput.min = new Date().toISOString().slice(0, 10);
+const durationInput = document.querySelector("#duration");
+function localDateValue() { const now = new Date(); return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+dateInput.min = localDateValue();
 dateInput.value = dateInput.min;
 
 function prettyDate(value) { return new Date(`${value}T12:00:00`).toLocaleDateString("en-PH", { weekday:"long", month:"long", day:"numeric" }); }
 function courtKey(court) { return court.toLowerCase().replaceAll(" ", "-"); }
 function timeKey(time) { return time.replaceAll(":", "-").replaceAll(" ", "-").toLowerCase(); }
-function endTime(time) { return slots[(slots.indexOf(time) + 1) % slots.length]; }
+function slotHour(time) { const [clock, meridiem] = time.split(" "); let hour = Number(clock.split(":")[0]); if (meridiem === "PM" && hour !== 12) hour += 12; if (meridiem === "AM" && hour === 12) hour = 0; return hour; }
+function endTime(time, duration = 1) { return slots[(slots.indexOf(time) + duration) % slots.length]; }
+function selectedDuration() { return Number(durationInput.value); }
+function bookingSlots(time, duration = selectedDuration()) { const start = slots.indexOf(time); return start < 0 ? [] : slots.slice(start, start + duration); }
+function hourlyRate(time) { const hour = slotHour(time); return hour >= 7 && hour < 16 ? 120 : 160; }
+function bookingPrice(time, duration = selectedDuration()) { return bookingSlots(time, duration).reduce((total, slot) => total + hourlyRate(slot), 0); }
+function isPastSlot(time) { if (dateInput.value !== localDateValue()) return false; const now = new Date(); const slotStart = new Date(); slotStart.setHours(slotHour(time), 0, 0, 0); return slotStart <= now; }
+function isBookedSlot(time) { return unavailable.has(time) || (!db && demoBooked.has(`${selectedCourt}|${time}`)); }
+function isSlotAvailable(time) { const range = bookingSlots(time); return range.length === selectedDuration() && range.every(slot => !isPastSlot(slot) && !isBookedSlot(slot)); }
 function bookingPath() { return `bookings/${dateInput.value}/${courtKey(selectedCourt)}`; }
 async function connectFirebase() {
   if (!firebaseReady) return;
@@ -85,7 +95,7 @@ function setAuthMode(register) {
 }
 function renderSlots() {
   document.querySelector("#time-grid").innerHTML = slots.map(time => {
-    const unavailableSlot = unavailable.has(time) || (!firebaseReady && demoBooked.has(`${selectedCourt}|${time}`));
+    const unavailableSlot = !isSlotAvailable(time);
     return `<button class="slot ${unavailableSlot ? "booked" : ""} ${time === selectedTime ? "selected" : ""}" data-time="${time}" ${unavailableSlot ? "disabled" : ""}>${time}</button>`;
   }).join("");
   document.querySelectorAll(".slot:not(.booked)").forEach(button => button.addEventListener("click", () => { selectedTime = button.dataset.time; renderSlots(); updateSummary(); }));
@@ -96,8 +106,11 @@ function updateSummary() {
   if (!selectedTime) return;
   document.querySelector("#summary-court").textContent = selectedCourt;
   document.querySelector("#summary-date").textContent = prettyDate(dateInput.value);
-  document.querySelector("#summary-time").textContent = `${selectedTime} – ${endTime(selectedTime)}`;
+  const duration = selectedDuration();
+  document.querySelector("#summary-time").textContent = `${selectedTime} – ${endTime(selectedTime, duration)}`;
   document.querySelector("#summary-players").textContent = `${document.querySelector("#players").value} players`;
+  document.querySelector("#rental-label").textContent = `${duration} ${duration === 1 ? "hour" : "hours"} court rental`;
+  document.querySelector("#summary-total").textContent = `₱${bookingPrice(selectedTime, duration)}`;
 }
 async function loadAvailability() {
   selectedTime = null; unavailable = new Set(); renderSlots(); updateSummary();
@@ -114,6 +127,7 @@ async function loadAvailability() {
 document.querySelectorAll(".court-tab").forEach(tab => tab.addEventListener("click", () => { selectedCourt = tab.dataset.court; document.querySelectorAll(".court-tab").forEach(item => item.classList.toggle("active", item === tab)); loadAvailability(); }));
 dateInput.addEventListener("change", loadAvailability);
 document.querySelector("#players").addEventListener("change", updateSummary);
+durationInput.addEventListener("change", () => { selectedTime = null; renderSlots(); updateSummary(); });
 document.querySelector("#account-btn").addEventListener("click", showAccountDialog);
 document.querySelector("#auth-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
 document.querySelector("#account-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
@@ -144,14 +158,24 @@ document.querySelector("#auth-form").addEventListener("submit", async event => {
 document.querySelector("#book-btn").addEventListener("click", async () => {
   if (!currentUser) { showAccountDialog(); return; }
   if (!selectedTime) return;
-  const booking = { court:selectedCourt, date:dateInput.value, time:selectedTime, players:document.querySelector("#players").value, createdAt:new Date().toISOString(), status:"confirmed", ownerUid:currentUser.uid, ownerName:currentUser.displayName || "Customer" };
+  const duration = selectedDuration();
+  const reservedSlots = bookingSlots(selectedTime, duration);
+  if (reservedSlots.length !== duration) { alert("Choose a time that leaves enough hours before midnight."); return; }
+  const reservationId = `${currentUser.uid}-${Date.now()}`;
+  const booking = { court:selectedCourt, date:dateInput.value, players:document.querySelector("#players").value, createdAt:new Date().toISOString(), status:"confirmed", ownerUid:currentUser.uid, ownerName:currentUser.displayName || "Customer", startTime:selectedTime, durationHours:duration, totalPrice:bookingPrice(selectedTime, duration), reservationId };
   const button = document.querySelector("#book-btn"); button.disabled = true; button.textContent = "Saving…";
   try {
     if (db) {
-      const result = await db.ref(`${bookingPath()}/${timeKey(selectedTime)}`).transaction(current => current === null ? booking : undefined);
+      const result = await db.ref(bookingPath()).transaction(current => {
+        const schedule = current || {};
+        if (reservedSlots.some(slot => schedule[timeKey(slot)])) return;
+        const nextSchedule = { ...schedule };
+        reservedSlots.forEach((slot, index) => { nextSchedule[timeKey(slot)] = { ...booking, time:slot, isPrimary:index === 0 }; });
+        return nextSchedule;
+      });
       if (!result.committed) { alert("That time was just booked by someone else. Please choose another slot."); loadAvailability(); return; }
-    } else demoBooked.add(`${selectedCourt}|${selectedTime}`);
-    document.querySelector("#confirmation-text").textContent = `${selectedCourt} is reserved for ${prettyDate(booking.date)} at ${booking.time}.`;
+    } else reservedSlots.forEach(slot => demoBooked.add(`${selectedCourt}|${slot}`));
+    document.querySelector("#confirmation-text").textContent = `${selectedCourt} is reserved for ${prettyDate(booking.date)} from ${selectedTime} to ${endTime(selectedTime, duration)} for ₱${booking.totalPrice}.`;
     document.querySelector("#booking-dialog").showModal(); loadAvailability();
   }
   catch (error) { alert("We couldn't save this booking. Please try again."); console.error(error); }
