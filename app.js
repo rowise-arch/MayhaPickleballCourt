@@ -32,6 +32,7 @@ function courtKey(court) { return court.toLowerCase().replaceAll(" ", "-"); }
 function timeKey(time) { return time.replaceAll(":", "-").replaceAll(" ", "-").toLowerCase(); }
 function slotHour(time) { const [clock, meridiem] = time.split(" "); let hour = Number(clock.split(":")[0]); if (meridiem === "PM" && hour !== 12) hour += 12; if (meridiem === "AM" && hour === 12) hour = 0; return hour; }
 function endTime(time, duration = 1) { return slots[(slots.indexOf(time) + duration) % slots.length]; }
+function slotLabel(time) { return `${time} – ${endTime(time)}`; }
 function selectedDuration() { return Number(durationInput.value); }
 function bookingSlots(time, duration = selectedDuration()) { const start = slots.indexOf(time); return start < 0 ? [] : slots.slice(start, start + duration); }
 function hourlyRate(time) { const hour = slotHour(time); return hour >= 7 && hour < 16 ? 120 : 160; }
@@ -96,7 +97,7 @@ function setAuthMode(register) {
 function renderSlots() {
   document.querySelector("#time-grid").innerHTML = slots.map(time => {
     const unavailableSlot = !isSlotAvailable(time);
-    return `<button class="slot ${unavailableSlot ? "booked" : ""} ${time === selectedTime ? "selected" : ""}" data-time="${time}" ${unavailableSlot ? "disabled" : ""}>${time}</button>`;
+    return `<button class="slot ${unavailableSlot ? "booked" : ""} ${time === selectedTime ? "selected" : ""}" data-time="${time}" ${unavailableSlot ? "disabled" : ""}>${slotLabel(time)}</button>`;
   }).join("");
   document.querySelectorAll(".slot:not(.booked)").forEach(button => button.addEventListener("click", () => { selectedTime = button.dataset.time; renderSlots(); updateSummary(); }));
 }
