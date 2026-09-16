@@ -15,7 +15,7 @@ let auth = null;
 let currentUser = null;
 let creatingAccount = false;
 let isAdmin = false;
-const slots = ["7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM"];
+const slots = ["12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM", "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM"];
 const demoBooked = new Set(["Court 1|9:00 AM", "Court 1|3:00 PM", "Court 2|10:00 AM", "Court 3|5:00 PM", "Court 4|7:00 PM"]);
 let selectedCourt = "Court 1";
 let selectedTime = null;
@@ -28,6 +28,7 @@ dateInput.value = dateInput.min;
 function prettyDate(value) { return new Date(`${value}T12:00:00`).toLocaleDateString("en-PH", { weekday:"long", month:"long", day:"numeric" }); }
 function courtKey(court) { return court.toLowerCase().replaceAll(" ", "-"); }
 function timeKey(time) { return time.replaceAll(":", "-").replaceAll(" ", "-").toLowerCase(); }
+function endTime(time) { return slots[(slots.indexOf(time) + 1) % slots.length]; }
 function bookingPath() { return `bookings/${dateInput.value}/${courtKey(selectedCourt)}`; }
 async function connectFirebase() {
   if (!firebaseReady) return;
@@ -95,7 +96,7 @@ function updateSummary() {
   if (!selectedTime) return;
   document.querySelector("#summary-court").textContent = selectedCourt;
   document.querySelector("#summary-date").textContent = prettyDate(dateInput.value);
-  document.querySelector("#summary-time").textContent = `${selectedTime} – ${slots[slots.indexOf(selectedTime) + 1] || "8:00 PM"}`;
+  document.querySelector("#summary-time").textContent = `${selectedTime} – ${endTime(selectedTime)}`;
   document.querySelector("#summary-players").textContent = `${document.querySelector("#players").value} players`;
 }
 async function loadAvailability() {

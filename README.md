@@ -33,7 +33,7 @@ A responsive pickleball-court booking interface with a Firebase Realtime Databas
 }
 ```
 
-Bookings are saved under `bookings/{date}/{court}/{time}`. The app supports four courts. Each time slot is committed with a Realtime Database transaction, preventing two users from confirming the same slot at once. Each booking is tied to the authenticated account that made it.
+Bookings are saved under `bookings/{date}/{court}/{time}`. The app supports four courts and 24-hour bookings in one-hour time slots. Each time slot is committed with a Realtime Database transaction, preventing two users from confirming the same slot at once. Each booking is tied to the authenticated account that made it.
 
 ## Give an account administrator access
 
