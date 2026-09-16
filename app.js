@@ -13,7 +13,7 @@ const firebaseReady = !Object.values(firebaseConfig).some(value => value.startsW
 let db = null;
 let auth = null;
 let currentUser = null;
-let creatingAccount = true;
+let creatingAccount = false;
 const slots = ["7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM"];
 const demoBooked = new Set(["Court 1|9:00 AM", "Court 1|3:00 PM", "Court 2|10:00 AM"]);
 let selectedCourt = "Court 1";
@@ -69,6 +69,7 @@ function setAuthMode(register) {
   document.querySelector("#auth-title").textContent = register ? "Create your account" : "Welcome back";
   document.querySelector("#auth-intro").textContent = register ? "Save your bookings and get ready to play." : "Sign in to manage your court bookings.";
   document.querySelector("#name-field").classList.toggle("hidden", !register);
+  document.querySelector("#auth-password").autocomplete = register ? "new-password" : "current-password";
   document.querySelector("#auth-submit").innerHTML = register ? "Create account <span>→</span>" : "Sign in <span>→</span>";
   document.querySelector("#auth-switch").innerHTML = register ? "Already have an account? <button type=\"button\" id=\"switch-auth\">Sign in</button>" : "New to Mayha Courts? <button type=\"button\" id=\"switch-auth\">Create an account</button>";
   document.querySelector("#switch-auth").addEventListener("click", () => setAuthMode(!creatingAccount));
