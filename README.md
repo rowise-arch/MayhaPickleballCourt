@@ -26,8 +26,8 @@ A responsive pickleball-court booking interface with a Firebase Realtime Databas
       ".read": "auth != null",
       "$date": {
         "$court": {
+          ".write": "auth != null",
           "$time": {
-            ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || (data.exists() && data.child('ownerUid').val() === auth.uid && newData.child('status').val() === 'cancelled') || root.child('admins').child(auth.uid).val() === true)",
             ".validate": "newData.hasChildren(['court', 'date', 'time', 'players', 'createdAt', 'status', 'ownerUid']) && newData.child('court').isString() && newData.child('date').isString() && newData.child('time').isString() && newData.child('players').isString() && (!newData.child('ownerName').exists() || newData.child('ownerName').isString()) && (newData.child('status').val() === 'confirmed' || newData.child('status').val() === 'checked_in' || newData.child('status').val() === 'cancelled' || newData.child('status').val() === 'no_show')"
           }
         }
@@ -47,7 +47,7 @@ Court pricing is calculated per hour: ₱120 from 7 AM to 4 PM, and ₱160 from 
 - `admin.html` provides a four-court, 24-hour calendar plus customer name, contact number, notes, booking reference, live status controls, revenue, peak-time, and utilization summaries.
 - Staff can make walk-in reservations and block a court (or all courts) for maintenance. Admins can set a manual total for a walk-in to handle promotions or special-event pricing.
 
-After this update, publish the rules above again. The `blocks` rule is required for the court-maintenance controls and the revised booking rule permits a customer to cancel their own booking.
+After this update, publish the rules above again. The `blocks` rule is required for the court-maintenance controls. The court-level booking write permission is necessary because the browser performs one atomic transaction to reserve a multi-hour schedule. Before public launch, move booking creation to a Cloud Function so the server can enforce owner-level permissions while retaining atomic multi-hour reservations.
 
 ## Give an account administrator access
 
