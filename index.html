@@ -10,10 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./auth.css" />
+    <link rel="stylesheet" href="./branding.css" />
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="Mayha Courts home"><span class="brand-mark">M</span> MAYHA <b>COURTS</b></a>
+      <a class="brand" href="#top" aria-label="Mayha Square Pickleball Court home"><img class="brand-logo" src="./mayha-square-logo.png" alt="Mayha Square Pickleball Court logo" /> MAYHA <b>COURTS</b></a>
       <nav><a href="#book">Book a court</a><a href="#how-it-works">How it works</a></nav>
       <button class="profile-btn" id="account-btn" type="button" aria-label="Account">⌁</button>
     </header>
@@ -67,7 +68,7 @@
 
     <dialog id="booking-dialog"><button class="dialog-close" id="dialog-close" aria-label="Close">×</button><div class="success-mark">✓</div><p class="eyebrow">BOOKING CONFIRMED</p><h2>See you on the court!</h2><p id="confirmation-text"></p><p class="dialog-note">We’ve saved your reservation. Please arrive 10 minutes early.</p><button class="book-btn" id="done-btn">Done</button></dialog>
     <dialog id="account-dialog" class="account-dialog">
-      <div class="auth-panel" id="auth-panel"><button class="dialog-close" id="auth-close" aria-label="Close">×</button><span class="brand-mark">M</span><p class="eyebrow">MAYHA COURTS</p><h2 id="auth-title">Create your account</h2><p class="auth-intro" id="auth-intro">Save your bookings and get ready to play.</p><form id="auth-form"><label id="name-field">FULL NAME<input id="auth-name" type="text" autocomplete="name" placeholder="Juan dela Cruz" /></label><label>EMAIL ADDRESS<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com" /></label><label>PASSWORD<input id="auth-password" type="password" autocomplete="new-password" required minlength="6" placeholder="At least 6 characters" /></label><p class="auth-error hidden" id="auth-error"></p><button class="book-btn" id="auth-submit" type="submit">Create account <span>→</span></button></form><p class="auth-switch" id="auth-switch">Already have an account? <button type="button" id="switch-auth">Sign in</button></p></div>
+      <div class="auth-panel" id="auth-panel"><button class="dialog-close" id="auth-close" aria-label="Close">×</button><img class="auth-logo" src="./mayha-square-logo.png" alt="Mayha Square Pickleball Court logo" /><p class="eyebrow">MAYHA COURTS</p><h2 id="auth-title">Create your account</h2><p class="auth-intro" id="auth-intro">Save your bookings and get ready to play.</p><form id="auth-form"><label id="name-field">FULL NAME<input id="auth-name" type="text" autocomplete="name" placeholder="Juan dela Cruz" /></label><label>EMAIL ADDRESS<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com" /></label><label>PASSWORD<input id="auth-password" type="password" autocomplete="new-password" required minlength="6" placeholder="At least 6 characters" /></label><p class="auth-error hidden" id="auth-error"></p><button class="book-btn" id="auth-submit" type="submit">Create account <span>→</span></button></form><p class="auth-switch" id="auth-switch">Already have an account? <button type="button" id="switch-auth">Sign in</button></p></div>
       <div class="signed-in-panel hidden" id="signed-in-panel"><button class="dialog-close" id="account-close" aria-label="Close">×</button><div class="success-mark">✓</div><p class="eyebrow">SIGNED IN</p><h2>Welcome back.</h2><p id="account-email"></p><button class="book-btn" id="sign-out-btn" type="button">Sign out</button></div>
     </dialog>
     <footer><span>© 2026 MAYHA COURTS</span><span>MADE FOR THE LOVE OF THE GAME</span></footer>
