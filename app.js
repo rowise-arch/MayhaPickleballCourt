@@ -213,7 +213,7 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
     openPaymentDialog(activeReservation);
     loadAvailability();
   }
-  catch (error) { alert(error?.code === "PERMISSION_DENIED" ? "That time was just booked by someone else." : "We couldn't save this booking. Please try again."); loadAvailability(); console.error(error); }
+  catch (error) { alert(error?.code === "PERMISSION_DENIED" ? "That time is no longer available, or your Firebase booking rules have not been published yet." : "We couldn't save this booking. Please try again."); loadAvailability(); console.error(error); }
   finally { button.disabled = false; button.innerHTML = "Confirm booking <span>→</span>"; }
 });
 function renderPaymentMethod() { const method = PAYMENT.methods.find(item => item.id === paymentMethodId); const holder = document.querySelector("#payment-method-details"); holder.innerHTML = `<p><strong>${method.accountName}</strong><br /><span id="payment-number">${method.number}</span> <button class="outline" id="copy-payment-number" type="button">Copy number</button></p>`; const qr = new Image(); qr.src = method.qr; qr.alt = `${method.label} QR code`; qr.className = "payment-qr"; qr.onload = () => holder.prepend(qr); document.querySelector("#copy-payment-number").onclick = async () => { try { await navigator.clipboard.writeText(method.number); document.querySelector("#copy-payment-number").textContent = "Copied"; } catch { } }; }
