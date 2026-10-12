@@ -1,1 +1,2 @@
 .brand-logo,.auth-logo{object-fit:cover;object-position:center;width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:7px}.auth-logo{width:76px;height:76px;margin:0 0 15px;display:inline-block}.auth-panel>.brand-mark{display:none}
+.hero-logo{position:absolute;z-index:3;top:16%;right:28%;width:112px;height:112px;object-fit:cover;border-radius:50%;filter:drop-shadow(0 3px 5px #12372a66)}@media(max-width:700px){.hero-logo{top:11%;right:31%;width:76px;height:76px}}

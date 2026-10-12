@@ -1,5 +1,31 @@
 # Mayha Courts
 
+## PayMongo payments (test mode)
+
+Bookings are now held for 15 minutes while the customer completes a full-payment PayMongo Payment Link. Only the Firebase Cloud Functions service creates, confirms, expires, or cancels customer bookings; the browser never receives a PayMongo secret key.
+
+### One-time deployment setup
+
+1. Upgrade the Firebase project to the **Blaze** plan (scheduled Functions and outbound API calls require it).
+2. Install the Firebase CLI, sign in, and from this folder run `firebase use mayha-courts` then `cd functions && npm install && cd ..`.
+3. Store test-mode credentials securely — never in a browser file or Git:
+
+   ```powershell
+   firebase functions:secrets:set PAYMONGO_SECRET_KEY
+   firebase functions:secrets:set PAYMONGO_WEBHOOK_SECRET
+   ```
+
+4. Deploy: `firebase deploy --only functions,hosting`.
+5. Copy the deployed `paymongoWebhook` URL from the Firebase CLI output. In the **PayMongo Dashboard → Settings → Webhooks** while in **Test** mode, register that HTTPS URL and subscribe to `link.payment.paid`. Copy that endpoint's signing secret into `PAYMONGO_WEBHOOK_SECRET`.
+
+Open the site through Firebase Hosting (`https://mayha-courts.web.app`) or a local HTTP server such as `firebase emulators:start --only hosting`. Do **not** double-click `index.html`: a `file:///` page has a `null` origin and browsers will reject secure callable-payment requests before they reach Firebase.
+
+The Function uses PayMongo's current `POST /v1/payment_links` endpoint, sends the price in centavos, and sets a one-payment limit. The webhook verifies the raw body against the timestamped `Paymongo-Signature` header before processing it.
+
+### Going live
+
+Activate the PayMongo account, create live-mode API credentials and a separate live webhook, replace both Firebase secrets with their live equivalents, redeploy the Functions, then run one small real payment. Test and live webhook endpoints are separate in PayMongo.
+
 A responsive pickleball-court booking interface with a Firebase Realtime Database integration.
 
 ## Connect Firebase
@@ -24,22 +50,22 @@ A responsive pickleball-court booking interface with a Firebase Realtime Databas
     },
     "bookings": {
       ".read": "auth != null",
-      "$date": {
-        "$court": {
-          ".write": "auth != null",
-          "$time": {
-            ".validate": "newData.hasChildren(['court', 'date', 'time', 'players', 'createdAt', 'status', 'ownerUid']) && newData.child('court').isString() && newData.child('date').isString() && newData.child('time').isString() && newData.child('players').isString() && (!newData.child('ownerName').exists() || newData.child('ownerName').isString()) && (newData.child('status').val() === 'confirmed' || newData.child('status').val() === 'checked_in' || newData.child('status').val() === 'cancelled' || newData.child('status').val() === 'no_show')"
-          }
-        }
-      }
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$date": { "$court": { "$time": {
+        ".validate": "!newData.exists() || (newData.hasChildren(['court','date','time','createdAt','status','ownerUid']) && newData.child('court').isString() && newData.child('date').isString() && newData.child('time').isString())"
+      }}}
+    },
+    "reservations": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
     }
   }
 }
 ```
 
-Bookings are saved under `bookings/{date}/{court}/{time}`. The app supports four courts and 24-hour bookings in one-hour time slots. Each time slot is committed with a Realtime Database transaction, preventing two users from confirming the same slot at once. Each booking is tied to the authenticated account that made it.
+Bookings are saved under `bookings/{date}/{court}/{time}`. The app supports four courts and 24-hour bookings in one-hour time slots. Customer writes are intentionally denied by the rules: Cloud Functions use the Admin SDK and bypass rules, while staff accounts retain direct admin-only access for walk-ins. Payment holds block slots until they are paid, cancelled, or expired.
 
-Court pricing is calculated per hour: ₱120 from 7 AM to 4 PM, and ₱160 from 4 PM to 7 AM. Customers can reserve one to six consecutive hours; the app disables a start time when any selected hour has passed or is already booked.
+Court pricing is calculated per hour from the selected Philippine date: Monday–Thursday is ₱120 from 7 AM to 4 PM and ₱160 overnight; Friday–Sunday is ₱160 from 7 AM to 4 PM and ₱200 overnight. Customers can book 2 or 4 hours only, and starts from 6 PM through 6 AM require 4 hours. Wednesday, Friday, and Sunday are closed to customer bookings. The Cloud Function recalculates the charge independently of the displayed browser price.
 
 ## Operations pages
 
