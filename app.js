@@ -12,17 +12,26 @@ const firebaseConfig = {
 const firebaseReady = !Object.values(firebaseConfig).some(value => value.startsWith("YOUR_"));
 let db = null;
 let auth = null;
-let functions = null;
+let storage = null;
 let currentUser = null;
 let creatingAccount = false;
 let isAdmin = false;
 const slots = ["12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM", "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM"];
 const CLOSED_DAYS = [3, 5, 0];
+const PAYMENT = {
+  holdMinutes: 30,
+  methods: [
+    { id: "gcash", label: "GCash", accountName: "Jeffrey Rouisse Factor", number: "09393593728", qr: "./gcash-qr.png" },
+    { id: "maya", label: "Maya", accountName: "YOUR NAME HERE", number: "09XX XXX XXXX", qr: "./maya-qr.png" }
+  ]
+};
 const demoBooked = new Set(["Court 1|9:00 AM", "Court 1|3:00 PM", "Court 2|10:00 AM", "Court 3|5:00 PM", "Court 4|7:00 PM"]);
 let selectedCourt = "Court 1";
 let selectedTime = null;
 let unavailable = new Set();
 let blockedSlots = new Set();
+let activeReservation = null;
+let paymentMethodId = PAYMENT.methods[0].id;
 let stopAvailabilityListener = null;
 const dateInput = document.querySelector("#booking-date");
 const durationInput = document.querySelector("#duration");
@@ -48,6 +57,7 @@ function bookingPrice(time, duration = selectedDuration()) { return bookingSlots
 function updateRateDisplay() { const weekend = isWeekend(); const day = weekend ? 160 : 120, night = weekend ? 200 : 160; document.querySelector("#rate-label").textContent = `₱${day}–₱${night} / hour`; document.querySelector("#rate-note").innerHTML = `7 AM–4 PM: ₱${day}/hr &nbsp;·&nbsp; 4 PM–7 AM: ₱${night}/hr`; }
 function isPastSlot(time) { if (dateInput.value !== localDateValue()) return false; const now = new Date(); const slotStart = new Date(); slotStart.setHours(slotHour(time), 0, 0, 0); return slotStart <= now; }
 function isBookedSlot(time) { return unavailable.has(time) || blockedSlots.has(time) || (!db && demoBooked.has(`${selectedCourt}|${time}`)); }
+function occupiesSlot(booking) { return booking && booking.status !== "cancelled" && (booking.status !== "pending_payment" || !!booking.proofSubmittedAt || Number(booking.holdExpiresAt) > Date.now()); }
 function renderBlockNotice(data) {
   const notice = document.querySelector("#block-notice");
   const entries = Object.entries(data || {}).map(([savedKey, detail]) => ({ time:slots.find(time => timeKey(time) === savedKey), reason:detail.reason || "Court unavailable" })).filter(item => item.time);
@@ -69,7 +79,7 @@ async function connectFirebase() {
     const app = window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(firebaseConfig);
     db = app.database();
     auth = app.auth();
-    functions = app.functions("asia-southeast1");
+    storage = app.storage();
     auth.onAuthStateChanged(user => {
       currentUser = user;
       isAdmin = false;
@@ -144,7 +154,7 @@ async function loadAvailability() {
   if (stopAvailabilityListener) stopAvailabilityListener();
   const scheduleRef = db.ref(bookingPath());
   const listener = snapshot => {
-    unavailable = new Set(Object.values(snapshot.val() || {}).filter(booking => booking.status !== "cancelled").map(booking => booking.time));
+    unavailable = new Set(Object.values(snapshot.val() || {}).filter(occupiesSlot).map(booking => booking.time));
     renderSlots();
   };
   scheduleRef.on("value", listener, error => console.warn("Could not load bookings from Firebase", error));
@@ -193,18 +203,27 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
   if (duration < minHoursFor(selectedTime)) { alert("Bookings starting 6 PM onwards are 4 hours."); return; }
   const button = document.querySelector("#book-btn"); button.disabled = true; button.textContent = "Saving…";
   try {
-    if (!functions) throw new Error("Booking service is unavailable. Please refresh and try again.");
-    const createBooking = functions.httpsCallable("createBooking");
-    const result = await createBooking({ date:dateInput.value, court:selectedCourt, startTime:selectedTime, durationHours:duration, contactPhone:phone, note:document.querySelector("#booking-note").value.trim() });
-    if (!result.data?.checkoutUrl) throw new Error("Payment link was not returned.");
-    button.textContent = "Redirecting to payment…";
-    window.location.assign(result.data.checkoutUrl);
+    const reservationId = `${currentUser.uid}-${Date.now()}`;
+    const holdExpiresAt = Date.now() + PAYMENT.holdMinutes * 60 * 1000;
+    const booking = { court:selectedCourt, date:dateInput.value, contactPhone:phone, note:document.querySelector("#booking-note").value.trim(), createdAt:new Date().toISOString(), status:"pending_payment", paymentStatus:"unpaid", holdExpiresAt, ownerUid:currentUser.uid, ownerName:currentUser.displayName || "Customer", startTime:selectedTime, durationHours:duration, totalPrice:bookingPrice(selectedTime, duration), reservationId };
+    const updates = {};
+    reservedSlots.forEach((slot, index) => { updates[`bookings/${dateInput.value}/${courtKey(selectedCourt)}/${timeKey(slot)}`] = { ...booking, time:slot, isPrimary:index === 0 }; });
+    if (db) await db.ref().update(updates); else reservedSlots.forEach(slot => demoBooked.add(`${selectedCourt}|${slot}`));
+    activeReservation = { ...booking, slots: reservedSlots };
+    openPaymentDialog(activeReservation);
+    loadAvailability();
   }
-  catch (error) { alert(error?.message || "We couldn't start your payment. Please try again."); console.error(error); }
+  catch (error) { alert(error?.code === "PERMISSION_DENIED" ? "That time was just booked by someone else." : "We couldn't save this booking. Please try again."); loadAvailability(); console.error(error); }
   finally { button.disabled = false; button.innerHTML = "Confirm booking <span>→</span>"; }
 });
+function renderPaymentMethod() { const method = PAYMENT.methods.find(item => item.id === paymentMethodId); const holder = document.querySelector("#payment-method-details"); holder.innerHTML = `<p><strong>${method.accountName}</strong><br /><span id="payment-number">${method.number}</span> <button class="outline" id="copy-payment-number" type="button">Copy number</button></p>`; const qr = new Image(); qr.src = method.qr; qr.alt = `${method.label} QR code`; qr.className = "payment-qr"; qr.onload = () => holder.prepend(qr); document.querySelector("#copy-payment-number").onclick = async () => { try { await navigator.clipboard.writeText(method.number); document.querySelector("#copy-payment-number").textContent = "Copied"; } catch { } }; }
+function openPaymentDialog(reservation) { activeReservation = reservation; paymentMethodId = PAYMENT.methods[0].id; document.querySelector("#confirmation-text").textContent = `${reservation.court} · ${prettyDate(reservation.date)} · ${reservation.startTime} – ${endTime(reservation.startTime, reservation.durationHours)}`; document.querySelector("#payment-amount").textContent = `₱${reservation.totalPrice}`; document.querySelector("#payment-reference").value = reservation.paymentReference || ""; document.querySelector("#payment-tabs").innerHTML = PAYMENT.methods.map(method => `<button type="button" class="court-tab ${method.id === paymentMethodId ? "active" : ""}" data-method="${method.id}">${method.label}</button>`).join(""); document.querySelectorAll("#payment-tabs button").forEach(button => button.onclick = () => { paymentMethodId = button.dataset.method; document.querySelectorAll("#payment-tabs button").forEach(item => item.classList.toggle("active", item === button)); renderPaymentMethod(); }); renderPaymentMethod(); updatePaymentHold(); if (!document.querySelector("#booking-dialog").open) document.querySelector("#booking-dialog").showModal(); }
+function updatePaymentHold() { if (!activeReservation) return; const remaining = Math.max(0, Math.ceil((Number(activeReservation.holdExpiresAt) - Date.now()) / 1000)); document.querySelector("#payment-hold").textContent = remaining ? `Held for you: ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}` : "This hold has expired and the slot may be taken."; }
+async function compressProof(file) { if (!file || !file.type.startsWith("image/")) throw new Error("Choose an image file."); if (file.size > 5 * 1024 * 1024) throw new Error("The image must be under 5 MB."); const image = await createImageBitmap(file), scale = Math.min(1, 1280 / image.width), canvas = document.createElement("canvas"); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale); canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height); return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .82)); }
+document.querySelector("#submit-payment").addEventListener("click", async () => { const reference = document.querySelector("#payment-reference").value.trim(), errorBox = document.querySelector("#payment-error"); errorBox.classList.add("hidden"); if (!activeReservation || reference.length < 6) { errorBox.textContent = "Enter a payment reference with at least 6 characters."; errorBox.classList.remove("hidden"); return; } const button = document.querySelector("#submit-payment"); button.disabled = true; button.textContent = "Submitting…"; let proofUrl = ""; try { const file = document.querySelector("#payment-proof").files[0]; if (file && storage) { try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${currentUser.uid}/${activeReservation.reservationId}.jpg`).put(blob, { contentType:"image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); } catch (uploadError) { document.querySelector("#payment-upload-note").textContent = "Screenshot could not be uploaded. Your reference number will still be submitted."; document.querySelector("#payment-upload-note").classList.remove("hidden"); } } const updates = {}; activeReservation.slots.forEach(slot => { const base = `bookings/${activeReservation.date}/${courtKey(activeReservation.court)}/${timeKey(slot)}`; updates[`${base}/paymentReference`] = reference; updates[`${base}/paymentMethod`] = paymentMethodId; updates[`${base}/proofSubmittedAt`] = Date.now(); if (proofUrl) updates[`${base}/proofUrl`] = proofUrl; }); await db.ref().update(updates); document.querySelector("#confirmation-text").textContent = "Payment submitted. We'll confirm your booking once staff verify it."; document.querySelector("#submit-payment").classList.add("hidden"); } catch (error) { errorBox.textContent = error.message || "We could not submit payment details."; errorBox.classList.remove("hidden"); } finally { button.disabled = false; button.innerHTML = "Submit payment <span>→</span>"; } });
 document.querySelector("#dialog-close").addEventListener("click", () => document.querySelector("#booking-dialog").close());
 document.querySelector("#done-btn").addEventListener("click", () => document.querySelector("#booking-dialog").close());
+setInterval(updatePaymentHold, 1000);
 setAuthMode(false);
 renderSlots();
 connectFirebase();
