@@ -185,6 +185,116 @@ async function saveProof(db, uid, reservationId, file) {
   return true;
 }
 
+/* ---------- reading the reference number from a receipt screenshot ----------
+   Runs on the customer's phone with Tesseract.js (free, no server). It only downloads the first time
+   someone picks a screenshot, then the browser keeps it. The customer can always edit what it fills in,
+   and staff should still check the reference in the GCash or Maya app: screenshots can be edited. */
+const RECEIPT_READER = {
+  script: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js",
+  workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js",
+  corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1",
+  langPath: "https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int",
+  timeoutMs: 45000
+};
+let receiptWorker = null;
+function loadReceiptWorker() {
+  if (receiptWorker) return receiptWorker;
+  receiptWorker = new Promise((resolve, reject) => {
+    if (window.Tesseract) return resolve(window.Tesseract);
+    const script = document.createElement("script");
+    script.src = RECEIPT_READER.script; script.async = true;
+    script.onload = () => resolve(window.Tesseract); script.onerror = () => reject(new Error("Couldn't load the screenshot reader."));
+    document.head.append(script);
+  }).then(T => T.createWorker("eng", 1, { workerPath: RECEIPT_READER.workerPath, corePath: RECEIPT_READER.corePath, langPath: RECEIPT_READER.langPath }));
+  receiptWorker.catch(() => { receiptWorker = null; }); // let the next screenshot try again
+  return receiptWorker;
+}
+/* Big, grey, high-contrast copy of the screenshot. Dark-mode receipts are flipped to dark text on light. */
+async function receiptCanvas(file) {
+  const image = await createImageBitmap(file), scale = Math.min(1, 1100 / image.width);
+  const canvas = document.createElement("canvas"), context = canvas.getContext("2d", { willReadFrequently: true });
+  canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height), d = pixels.data;
+  let total = 0;
+  for (let i = 0; i < d.length; i += 4) { const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; d[i] = d[i + 1] = d[i + 2] = g; total += g; }
+  const invert = total / (d.length / 4) < 110;
+  for (let i = 0; i < d.length; i += 4) { let g = invert ? 255 - d[i] : d[i]; g = Math.max(0, Math.min(255, (g - 128) * 1.35 + 128)); d[i] = d[i + 1] = d[i + 2] = g; }
+  context.putImageData(pixels, 0, 0);
+  return canvas;
+}
+/* Pulls the reference number and the peso amounts out of the text on a GCash or Maya receipt. */
+function parseReceipt(text) {
+  const lines = String(text || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const label = /\b(?:ref(?:erence)?\.?\s*(?:no|number|id|#|code)?|(?:txn|transaction)\s*(?:no|number|id|#|code))\.?\s*[:#.]?/i;
+  const toDigitLike = s => s.replace(/[Oo]/g, "0").replace(/[Il|]/g, "1");
+  const candidate = raw => { // the run of number-like chunks right after the label, e.g. "1234 567 890123"
+    const chunks = [];
+    for (const token of raw.trim().split(/\s+/)) { const t = toDigitLike(token).replace(/[:#.,]+$/, ""); if (/^[A-Z0-9-]+$/.test(t) && /\d/.test(t)) chunks.push(t); else if (chunks.length || t) break; }
+    const cleaned = chunks.join("").replace(/-/g, "");
+    return cleaned.length >= 6 && cleaned.length <= 24 && (cleaned.match(/\d/g) || []).length >= 4 ? cleaned : "";
+  };
+  let reference = "";
+  for (let i = 0; i < lines.length && !reference; i++) {
+    const match = lines[i].match(label);
+    if (!match) continue;
+    // the number usually sits after the label on the same line, sometimes on the next one
+    const rest = lines[i].slice(match.index + match[0].length).replace(/\b\d{1,2}[:/]\d{2}.*$/, "");
+    reference = candidate(rest) || candidate(lines[i + 1] || "");
+  }
+  if (!reference) { // no label found: a GCash reference is 13 digits, often printed as 4-3-6
+    const loose = toDigitLike(lines.join(" ")).match(/(?<!\d)\d{4}\s?\d{3}\s?\d{6}(?!\d)/);
+    if (loose) reference = loose[0].replace(/\s/g, "");
+  }
+  const money = /(?:₱|PHP|P|B)?\s*(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})(?!\d)/g;
+  const amounts = [], labelled = [];
+  lines.forEach((line, i) => {
+    if (/balance/i.test(line)) return; // a wallet balance isn't what was paid
+    for (const m of line.matchAll(money)) {
+      const value = Number(m[1].replace(/,/g, "") + "." + m[2]);
+      if (!(value > 0)) continue;
+      amounts.push(value);
+      if (/total|amount|sent|paid/i.test(line) || /total|amount|sent|paid/i.test(lines[i - 1] || "")) labelled.push(value);
+    }
+  });
+  return { reference, amounts, amount: labelled.length ? Math.max(...labelled) : null };
+}
+async function readReceipt(file) {
+  const worker = await loadReceiptWorker();
+  const canvas = await receiptCanvas(file);
+  const { data } = await withTimeout(worker.recognize(canvas), RECEIPT_READER.timeoutMs);
+  return parseReceipt(data.text);
+}
+/* Hooks a screenshot picker to a reference field. Fills the field only if it's empty or was filled by us,
+   so it never overwrites what the customer typed, and warns when the paid amount doesn't match. */
+function attachReceiptReader({ fileInput, refInput, note, expectedAmount }) {
+  let run = 0, autoValue = "";
+  const show = (kind, html) => { note.className = `receipt-note ${kind}`; note.innerHTML = html; note.hidden = !html; };
+  const fill = value => { refInput.value = value; autoValue = value; refInput.dispatchEvent(new Event("input", { bubbles: true })); };
+  const reset = () => { run++; autoValue = ""; show("", ""); };
+  refInput.addEventListener("input", () => { if (refInput.value !== autoValue) autoValue = ""; });
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0], mine = ++run;
+    if (!file || !file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) return show("", "");
+    show("reading", '<span class="receipt-spinner" aria-hidden="true"></span>Reading your screenshot…');
+    let result;
+    try { result = await readReceipt(file); } catch (error) { console.warn(error); if (mine === run) show("muted", "Couldn't read the screenshot. Type the reference number instead."); return; }
+    if (mine !== run) return; // a newer screenshot was picked, or this one was removed
+    const messages = [];
+    const typed = refInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!result.reference) messages.push(["muted", "Couldn't find a reference number in the screenshot. Type it in."]);
+    else if (!typed || refInput.value === autoValue) { fill(result.reference); messages.push(["filled", "Filled in from your screenshot. Check it matches your receipt."]); }
+    else if (typed !== result.reference) messages.push(["muted", `Your screenshot shows <b>${result.reference}</b>. <button type="button" class="receipt-use">Use this</button>`]);
+    const expected = Number(expectedAmount());
+    if (result.amount !== null && expected && !result.amounts.includes(expected) && Math.abs(result.amount - expected) >= 1)
+      messages.push(["warn", `Your screenshot shows <b>₱${result.amount.toLocaleString("en-PH")}</b>, but this booking is <b>₱${expected.toLocaleString("en-PH")}</b>. Make sure you sent the full amount.`]);
+    const worst = messages.some(m => m[0] === "warn") ? "warn" : messages[0]?.[0] || "";
+    show(worst, messages.map(m => `<span>${m[1]}</span>`).join(""));
+    note.querySelector(".receipt-use")?.addEventListener("click", () => { fill(result.reference); show("filled", "<span>Filled in from your screenshot. Check it matches your receipt.</span>"); });
+  });
+  return { reset };
+}
+
 /* ---------- interface helpers shared by the booking page and My Bookings ---------- */
 /* A short buzz on success. Android only; iPhone browsers ignore it. Used only when a hold or payment goes through. */
 function haptic() { try { navigator.vibrate?.(12); } catch {} }

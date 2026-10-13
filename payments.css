@@ -34,3 +34,17 @@
   @starting-style{#booking-dialog[open]{opacity:0;transform:none}}
 }
 @media (prefers-contrast:more){#booking-dialog{border:2px solid var(--ink)}}
+
+/* ---------- Reference number read from the receipt screenshot ---------- */
+.receipt-note{display:grid;gap:4px;margin:8px 0 0;padding:9px 11px;border-radius:8px;background:#eef5fb;color:var(--ink);font-size:0.75rem;line-height:1.4}
+.receipt-note[hidden]{display:none}
+.receipt-note.reading,.receipt-note.reading>span{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.receipt-note.filled{background:#eaf7d9;color:#2f5d12}
+.receipt-note.filled span::before{content:"✓ ";font-weight:800}
+.receipt-note.warn{background:#ffe9df;color:#8f2f15}
+.receipt-note b{font-weight:700;letter-spacing:.02em}
+.receipt-use{min-height:32px;margin-left:4px;padding:0 10px;border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit;font:700 0.75rem Outfit;cursor:pointer}
+.receipt-use:active{transform:scale(.97)}
+.receipt-spinner{flex:none;width:14px;height:14px;border:2px solid #a8c2d9;border-top-color:var(--ink);border-radius:50%;animation:receipt-spin .8s linear infinite}
+@keyframes receipt-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.receipt-spinner{animation-duration:2.4s}}

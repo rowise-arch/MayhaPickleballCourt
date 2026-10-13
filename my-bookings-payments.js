@@ -13,9 +13,9 @@ function openPayment(b) {
     <div class="payment-alert hidden" id="pay-alert" role="alert"></div>
     <div class="payment-tabs" role="tablist" aria-label="Payment method">${PAYMENT.methods.map(m => `<button type="button" role="tab" data-method="${m.id}" class="${m.id === methodId ? "active" : ""}" aria-selected="${m.id === methodId}">${m.label}</button>`).join("")}</div>
     <section class="payment-qr-card" id="method-details"></section>
-    <p class="payment-helper">Pay the exact amount, then enter your reference number below.</p>
-    <div class="payment-field"><label for="pay-reference">REFERENCE NUMBER</label><input id="pay-reference" type="text" minlength="6" autocomplete="off" autocapitalize="characters" placeholder="Enter your payment reference" value="${safe(b.paymentReference || "")}"><p>Find this in your payment confirmation (at least 6 characters).</p></div>
-    <div class="payment-field"><span>SCREENSHOT (OPTIONAL)</span><input id="pay-proof" class="visually-hidden" type="file" accept="image/png,image/jpeg"><label class="proof-dropzone" for="pay-proof"><b>↑ Upload screenshot</b><small>JPG or PNG, up to 15 MB</small></label><div class="proof-preview hidden" id="proof-preview"></div></div>
+    <p class="payment-helper">Pay the exact amount, then upload your receipt screenshot or type the reference number.</p>
+    <div class="payment-field"><span>SCREENSHOT (OPTIONAL)</span><input id="pay-proof" class="visually-hidden" type="file" accept="image/png,image/jpeg"><label class="proof-dropzone" for="pay-proof"><b>↑ Upload screenshot</b><small>We'll fill in the reference number for you</small></label><div class="proof-preview hidden" id="proof-preview"></div></div>
+    <div class="payment-field"><label for="pay-reference">REFERENCE NUMBER</label><input id="pay-reference" type="text" minlength="6" autocomplete="off" autocapitalize="characters" placeholder="Enter your payment reference" value="${safe(b.paymentReference || "")}"><p class="receipt-note" id="receipt-note" hidden aria-live="polite"></p><p>Find this in your payment confirmation (at least 6 characters).</p></div>
     <p class="auth-error hidden" id="pay-error" role="alert"></p>
     <div class="payment-submitted hidden" id="pay-done"><div>✓</div><strong>Payment sent</strong><p>We'll confirm your booking once staff verify it.</p></div>
   </div>
@@ -38,8 +38,9 @@ function openPayment(b) {
     const url = URL.createObjectURL(file);
     preview.innerHTML = `<img src="${url}" alt="Selected screenshot"><span>${safe(file.name)}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`;
     preview.classList.remove("hidden");
-    preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; preview.classList.add("hidden"); preview.innerHTML = ""; };
+    preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; reader.reset(); preview.classList.add("hidden"); preview.innerHTML = ""; };
   };
+  const reader = attachReceiptReader({ fileInput: $("#pay-proof"), refInput: ref, note: $("#receipt-note"), expectedAmount: () => b.totalPrice });
   submit.onclick = () => submitPayment(b);
   prepareSheet(dialog);
   dialog.showModal();
