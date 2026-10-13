@@ -8,3 +8,10 @@
 .alert-btn:active{transform:scale(.97)}
 .alert-btn:disabled{opacity:.6}
 .payment-paused .payment-tabs,.payment-paused .payment-qr-card,.payment-paused .payment-helper{display:none}
+/* The dialog is a column: header and footer stay put, the middle scrolls. */
+#booking-dialog[open]{display:flex;flex-direction:column}
+#booking-dialog .payment-modal-header,#booking-dialog .payment-modal-footer{flex:none}
+#booking-dialog .payment-modal-body{flex:1 1 auto;min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* Keep the hidden file input inside its own field so it can't stretch or scroll the dialog. */
+#booking-dialog .payment-field{position:relative}
+#booking-dialog .visually-hidden{top:0;left:0}
