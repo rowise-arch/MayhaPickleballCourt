@@ -20,7 +20,7 @@ const CLOSED_DAYS = [3, 5, 0];
 // PAYMENT and SITE live in site-config.js (shared with My Bookings).
 // Put real photos in a "photos" folder: hero.jpg, court-1.jpg ... court-4.jpg. Missing photos fall back to drawings.
 const COURTS = [
-  { name: "Court 1", type: "Covered", photo: "./photos/court-1.jpg" },
+  { name: "Court 1", type: "Open air", photo: "./photos/court-1.jpg" },
   { name: "Court 2", type: "Open air", photo: "./photos/court-2.jpg" },
   { name: "Court 3", type: "Open air", photo: "./photos/court-3.jpg" },
   { name: "Court 4", type: "Open air", photo: "./photos/court-4.jpg" }
@@ -59,7 +59,7 @@ function isWeekend(value = dateInput.value) { const day = dateAsLocal(value).get
 function hourlyRate(time, value = dateInput.value) { const hour = slotHour(time), weekend = isWeekend(value); return hour >= 7 && hour < 16 ? (weekend ? 160 : 120) : (weekend ? 200 : 160); }
 function bookingPrice(time, duration = selectedDuration()) { return bookingSlots(time, duration).reduce((total, slot) => total + hourlyRate(slot), 0); }
 function dayRates(value = dateInput.value) { const weekend = isWeekend(value); return { day: weekend ? 160 : 120, night: weekend ? 200 : 160 }; }
-function updateRateDisplay() { renderDateStrip(); }
+function updateRateDisplay() { renderDateStrip(); const rates = dayRates(), tag = document.querySelector("#rate-tag"); if (tag) { tag.classList.toggle("weekend", isWeekend()); tag.innerHTML = `<b>${isWeekend() ? "Weekend rates" : "Weekday rates"}</b> ₱${rates.day}/hr day · ₱${rates.night}/hr night`; } }
 function isPastSlot(time) { if (dateInput.value !== localDateValue()) return false; const now = new Date(); const slotStart = new Date(); slotStart.setHours(slotHour(time), 0, 0, 0); return slotStart <= now; }
 function isBookedSlot(time) { return unavailable.has(time) || blockedSlots.has(time) || (!db && demoBooked.has(`${selectedCourt}|${time}`)); }
 function occupiesSlot(booking) { return occupies(booking); }
@@ -176,7 +176,7 @@ function renderDateStrip() {
 function courtVisual(court, extraClass = "") {
   const info = COURTS.find(item => item.name === court) || COURTS[0];
   const photo = loadedPhotos[info.photo] === true;
-  return `<div class="court-visual ${info.type === "Covered" ? "covered" : ""} ${photo ? "has-photo" : ""} ${extraClass}" ${photo ? `style="--photo:url('${info.photo}')"` : ""} aria-hidden="true"><i class="kitchen"></i><i class="net"></i><span>${court.replace("Court ", "")}</span></div>`;
+  return `<div class="court-visual ${photo ? "has-photo" : ""} ${extraClass}" ${photo ? `style="--photo:url('${info.photo}')"` : ""} aria-hidden="true"><i class="kitchen"></i><i class="net"></i><span>${court.replace("Court ", "")}</span></div>`;
 }
 function openHoursFor(court) {
   const key = courtKey(court);
@@ -192,7 +192,7 @@ function renderCourtCards() {
   holder.innerHTML = COURTS.map(court => {
     const hours = known && !isClosedDate() ? openHoursFor(court.name) : null;
     const availability = isClosedDate() ? "Closed this day" : hours === null ? "Sign in to see open times" : hours ? `${hours} open hour${hours === 1 ? "" : "s"} on ${dayName}` : `Fully booked on ${dayName}`;
-    return `<article class="court-card">${courtVisual(court.name)}<div class="court-card-body"><div class="court-card-title"><h3>${court.name}</h3><span class="court-type ${court.type === "Covered" ? "covered" : ""}">${court.type}</span></div><p class="court-availability">${availability}</p><p class="court-price">₱${rates.day}–₱${rates.night} per hour</p><button type="button" class="court-card-btn" data-court="${court.name}">Book ${court.name}</button></div></article>`;
+    return `<article class="court-card">${courtVisual(court.name)}<div class="court-card-body"><div class="court-card-title"><h3>${court.name}</h3><span class="court-type">${court.type}</span></div><p class="court-availability">${availability}</p><p class="court-price">₱${rates.day}–₱${rates.night} per hour</p><button type="button" class="court-card-btn" data-court="${court.name}">Book ${court.name}</button></div></article>`;
   }).join("");
   holder.querySelectorAll(".court-card-btn").forEach(button => button.addEventListener("click", () => {
     selectCourt(button.dataset.court);

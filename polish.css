@@ -85,8 +85,6 @@ input,select,.slot,.primary-link,.book-btn,.button,.admin-link,.day-chip,.cancel
 .court-visual .kitchen{position:absolute;top:16%;bottom:16%;left:37.3%;width:25.4%;border-left:2px solid #fff;border-right:2px solid #fff;background:#ffffff14}
 .court-visual .net{position:absolute;top:11%;bottom:11%;left:50%;width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 0 1px #0b2c5a40}
 .court-visual span{position:absolute;left:10px;bottom:9px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;color:var(--ink);font:800 0.875rem Bitter,Georgia,serif;z-index:1}
-.court-visual.covered{background:repeating-linear-gradient(90deg,#174f86 0 14px,#1b5a96 14px 28px)}
-.court-visual.covered:before{box-shadow:0 0 0 999px #0b2c5a26}
 .court-visual.has-photo{background:var(--photo) center/cover no-repeat}
 .court-visual.has-photo:before,.court-visual.has-photo:after,.court-visual.has-photo i{display:none}
 .court-visual.mini{width:150px;aspect-ratio:16/10;border-radius:var(--r-control);opacity:.9}
@@ -102,7 +100,6 @@ input,select,.slot,.primary-link,.book-btn,.button,.admin-link,.day-chip,.cancel
 .court-card-title{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .court-card h3{margin:0;font:800 1.25rem Bitter,Georgia,serif}
 .court-type{padding:4px 9px;border-radius:99px;background:#e7f3fb;color:var(--ink);font-size:0.75rem;font-weight:600;white-space:nowrap}
-.court-type.covered{background:#dff7e4}
 .court-availability{margin:4px 0 0;font-size:0.875rem;font-weight:600;color:var(--ink)}
 .court-price{margin:0 0 10px;font-size:0.8125rem;color:var(--muted)}
 .court-card-btn{margin-top:auto;padding:11px 12px;border:1px solid #a7c8df;background:#fff;color:var(--ink);font:700 0.875rem Outfit,sans-serif;cursor:pointer}
@@ -182,3 +179,16 @@ input,select{font-size:1rem}
 @media (prefers-reduced-motion:reduce){.confirm-bar{transform:none!important;transition:opacity 200ms ease!important}}
 @media (prefers-reduced-transparency:reduce){.topbar,.confirm-bar{background:#f3f8fc;-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-contrast:more){.topbar{background:var(--cream);border-bottom:2px solid var(--ink)}.confirm-bar{background:#fff;border:2px solid var(--ink)}}
+
+/* Rates, shown up front */
+.rate-tag{margin:2px 0 0;font-size:.8125rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.rate-tag b{margin-right:6px;padding:2px 8px;border-radius:99px;background:#e7f3fb;color:var(--ink);font-size:.75rem}
+.rate-tag.weekend b{background:#fff3c4;color:#7a5800}
+.rates-card{display:grid;max-width:520px;margin:-14px 0 30px;padding:6px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:#fff}
+.rates-row{display:grid;grid-template-columns:1.1fr 1fr 1fr;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #edf3f8;font-variant-numeric:tabular-nums}
+.rates-row:first-child{border-top:0}
+.rates-row span{font-weight:700;color:var(--ink)}
+.rates-head span{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rates-head small{display:block;font-size:.6875rem;font-weight:500;letter-spacing:0;text-transform:none}
+.rates-row.weekend b:after{content:"Weekend";margin-left:8px;padding:2px 7px;border-radius:99px;background:#fff3c4;color:#7a5800;font-size:.6875rem;font-weight:700;vertical-align:middle}
+.rates-row b{white-space:nowrap}@media(max-width:480px){.rates-row.weekend b:after{display:none}.rates-row.weekend b{color:#7a5800}}

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f3f8fc" />
     <title>Mayha Square Pickleball Court</title>
-    <meta name="description" content="Book one of four pickleball courts at Mayha Square. One covered, three open-air. Pay with GCash or Maya." />
+    <meta name="description" content="Book one of four open-air pickleball courts at Mayha Square. Pay with GCash or Maya." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -30,12 +30,12 @@
         <div class="hero-copy">
           <p class="hero-place"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" fill="currentColor"/></svg>Mayha Square</p>
           <h1>Four courts.<br /><em>Any hour you want.</em></h1>
-          <p class="hero-text">One covered court and three open-air courts. Book online, pay with GCash or Maya, and play day or night.</p>
+          <p class="hero-text">Four open-air courts. Book online, pay with GCash or Maya, and play day or night.</p>
           <a class="primary-link" href="#book">Book a court <span>→</span></a>
           <ul class="hero-facts">
-            <li><strong>4</strong><span>courts, 1 covered</span></li>
+            <li><strong>4</strong><span>open-air courts</span></li>
             <li><strong>24 hrs</strong><span>Mon, Tue, Thu, Sat</span></li>
-            <li><strong>₱120</strong><span>per hour, from</span></li>
+            <li><strong>₱120–₱200</strong><span>per hour</span></li>
           </ul>
         </div>
         <div class="court-art" id="hero-art" data-photo="./photos/hero.jpg" aria-hidden="true">
@@ -53,6 +53,7 @@
             <div class="date-field">
               <span class="field-label" id="date-label">DATE</span>
               <div class="date-strip" id="date-strip" role="group" aria-labelledby="date-label"></div>
+              <p class="rate-tag" id="rate-tag" aria-live="polite"></p>
               <input id="booking-date" type="hidden" />
             </div>
             <div class="field-row">
@@ -61,7 +62,7 @@
               <label class="notes-field">BOOKING NOTE <input id="booking-note" type="text" maxlength="140" placeholder="Optional request or note" /></label>
             </div>
             <div class="court-tabs" role="tablist" aria-label="Court selection">
-              <button class="court-tab active" data-court="Court 1">Court 1 <small>Covered</small></button>
+              <button class="court-tab active" data-court="Court 1">Court 1 <small>Open air</small></button>
               <button class="court-tab" data-court="Court 2">Court 2 <small>Open air</small></button>
               <button class="court-tab" data-court="Court 3">Court 3 <small>Open air</small></button>
               <button class="court-tab" data-court="Court 4">Court 4 <small>Open air</small></button>
@@ -89,7 +90,12 @@
 
       <section class="courts" id="courts">
         <h2>The courts.</h2>
-        <p class="section-sub">Court 1 has a roof, so it plays the same rain or shine. Courts 2 to 4 are open air.</p>
+        <p class="section-sub">All four courts are open air and cost the same.</p>
+        <div class="rates-card" aria-label="Hourly rates">
+          <div class="rates-row rates-head"><span></span><span>Day<small>7 AM – 4 PM</small></span><span>Night<small>4 PM – 7 AM</small></span></div>
+          <div class="rates-row"><b>Mon – Thu</b><span>₱120/hr</span><span>₱160/hr</span></div>
+          <div class="rates-row weekend"><b>Fri – Sun</b><span>₱160/hr</span><span>₱200/hr</span></div>
+        </div>
         <div class="court-cards" id="court-cards"></div>
       </section>
     </main>

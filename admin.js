@@ -159,7 +159,7 @@ function blockGroups() {
 }
 function renderCalendar(list) {
   const cal = $("#calendar"), parts = [`<div class="cal-corner"></div>`];
-  COURTS.forEach((court, c) => parts.push(`<div class="cal-head" style="grid-column:${c + 2}">${court}<small>${c === 0 ? "Covered" : "Open air"}</small></div>`));
+  COURTS.forEach((court, c) => parts.push(`<div class="cal-head" style="grid-column:${c + 2}">${court}<small>Open air</small></div>`));
   const blocked = new Set();
   blockGroups().forEach(g => { for (let h = g.start; h < g.start + g.hours; h++) blocked.add(`${g.courtKey}|${h}`); });
   const taken = new Set();
