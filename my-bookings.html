@@ -1,1 +1,67 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="theme-color" content="#f3f8fc"><title>My Bookings — Mayha Courts</title><link rel="icon" href="./mayha-logo-64.png" type="image/png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="./my-bookings.css"><link rel="stylesheet" href="./brand-theme.css"><link rel="stylesheet" href="./payments.css"><link rel="stylesheet" href="./polish.css"></head><body><header><a class="brand" href="./index.html"><img src="./mayha-logo-128.webp" alt="Mayha Courts">MAYHA <b>COURTS</b></a><a href="./index.html" class="back">Book a court</a></header><main><section id="loading" class="state">Loading your bookings…</section><section id="signed-out" class="state hidden"><h1>Sign in to see your bookings.</h1><a class="button" href="./index.html">Go to sign in</a></section><section id="content" class="hidden"><h1>My bookings</h1><p class="intro" id="customer-name"></p><p class="intro">Refunds for cancelled paid bookings are handled by staff.</p><div id="booking-list" class="list"></div></section></main><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script><script src="./my-bookings.js"></script><script src="./my-bookings-payments.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <meta name="theme-color" content="#f3f8fc">
+  <title>My bookings — Mayha Courts</title>
+  <link rel="icon" href="./mayha-logo-64.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./brand-theme.css">
+  <link rel="stylesheet" href="./payments.css">
+  <link rel="stylesheet" href="./polish.css">
+  <link rel="stylesheet" href="./my-bookings.css">
+  <link rel="stylesheet" href="./my-bookings-payment.css">
+</head>
+<body>
+  <header class="mb-bar">
+    <a class="brand" href="./index.html"><img src="./mayha-logo-64.webp" width="32" height="32" alt="">MAYHA <b>COURTS</b></a>
+    <div class="mb-bar-right">
+      <a class="mb-book-link" href="./index.html#book">Book a court</a>
+      <button type="button" class="profile-btn hidden" id="account-btn" aria-label="Account"></button>
+    </div>
+  </header>
+
+  <main class="mb-main">
+    <h1>My bookings</h1>
+
+    <section id="loading" aria-busy="true" aria-label="Loading your bookings">
+      <div class="bk skeleton"><i></i><i></i><i></i></div>
+      <div class="bk skeleton"><i></i><i></i><i></i></div>
+    </section>
+
+    <section id="signed-out" class="mb-empty hidden">
+      <h2>Sign in to see your bookings</h2>
+      <p>Your reservations, payment status and holds all live here.</p>
+      <a class="btn-primary" href="./index.html">Sign in</a>
+    </section>
+
+    <section id="content" class="hidden">
+      <h2 class="mb-section">Upcoming</h2>
+      <div id="upcoming"></div>
+      <details class="mb-past" id="past-wrap">
+        <summary>Past &amp; cancelled <span id="past-count"></span></summary>
+        <div id="past"></div>
+      </details>
+    </section>
+  </main>
+
+  <dialog id="booking-dialog" aria-labelledby="payment-title"></dialog>
+  <dialog id="account-dialog" class="mini-dialog">
+    <p class="mini-label">Signed in as</p>
+    <p id="account-email" class="mini-email"></p>
+    <div class="mini-actions"><button type="button" class="mini-ghost" id="account-close">Close</button><button type="button" class="book-btn" id="sign-out-btn">Sign out</button></div>
+  </dialog>
+  <div class="mb-toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="./site-config.js"></script>
+  <script src="./my-bookings.js"></script>
+  <script src="./my-bookings-payments.js"></script>
+</body>
+</html>

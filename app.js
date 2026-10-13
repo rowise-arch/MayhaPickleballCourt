@@ -18,15 +18,7 @@ let creatingAccount = false;
 let isAdmin = false;
 const slots = ["12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM", "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM"];
 const CLOSED_DAYS = [3, 5, 0];
-const PAYMENT = {
-  holdMinutes: 30,
-  methods: [
-    { id: "gcash", label: "GCash", accountName: "Jeffrey Rouisse Factor", number: "09393593728", qr: "./gcash-qr.png" },
-    { id: "maya", label: "Maya", accountName: "YOUR NAME HERE", number: "09XX XXX XXXX", qr: "./maya-qr.png" }
-  ]
-};
-// Venue details shown in the footer. Fill these in; empty values are simply hidden.
-const SITE = { address: "", phone: "" };
+// PAYMENT and SITE live in site-config.js (shared with My Bookings).
 // Put real photos in a "photos" folder: hero.jpg, court-1.jpg ... court-4.jpg. Missing photos fall back to drawings.
 const COURTS = [
   { name: "Court 1", type: "Covered", photo: "./photos/court-1.jpg" },
@@ -190,7 +182,7 @@ function courtVisual(court, extraClass = "") {
 }
 function openHoursFor(court) {
   const key = courtKey(court);
-  const taken = new Set(Object.values(dayBookings[key] || {}).filter(occupiesSlot).map(booking => booking.time));
+  const taken = new Set(Object.entries(dayBookings[key] || {}).filter(([, row]) => occupiesSlot(row)).map(([saved]) => slots.find(time => timeKey(time) === saved)).filter(Boolean));
   Object.keys(dayBlocks[key] || {}).forEach(saved => { const time = slots.find(item => timeKey(item) === saved); if (time) taken.add(time); });
   if (!db) demoBooked.forEach(entry => { const [name, time] = entry.split("|"); if (name === court) taken.add(time); });
   return slots.filter(time => !isPastSlot(time) && !taken.has(time)).length;
@@ -241,7 +233,7 @@ function updateSummary() {
 }
 function applyDayData() {
   const key = courtKey(selectedCourt);
-  unavailable = new Set(Object.values(dayBookings[key] || {}).filter(occupiesSlot).map(booking => booking.time));
+  unavailable = new Set(Object.entries(dayBookings[key] || {}).filter(([, row]) => occupiesSlot(row)).map(([saved]) => slots.find(time => timeKey(time) === saved)).filter(Boolean));
   const blockData = dayBlocks[key] || {};
   blockedSlots = new Set(Object.keys(blockData).map(saved => slots.find(time => timeKey(time) === saved)).filter(Boolean));
   if (isClosedDate()) { const notice = document.querySelector("#block-notice"); notice.textContent = "Online booking is closed on Wednesdays, Fridays and Sundays. Pick another date."; notice.classList.remove("hidden"); }
@@ -255,7 +247,7 @@ async function loadAvailability() {
   if (stopAvailabilityListener) { stopAvailabilityListener(); stopAvailabilityListener = null; }
   applyDayData();
   if (!db || !currentUser || isClosedDate()) return;
-  const date = dateInput.value, bookingsRef = db.ref(`bookings/${date}`), blocksRef = db.ref(`blocks/${date}`);
+  const date = dateInput.value, bookingsRef = db.ref(`availability/${date}`), blocksRef = db.ref(`blocks/${date}`);
   const onBookings = snapshot => { if (date !== dateInput.value) return; dayBookings = snapshot.val() || {}; applyDayData(); };
   const onBlocks = snapshot => { if (date !== dateInput.value) return; dayBlocks = snapshot.val() || {}; applyDayData(); };
   bookingsRef.on("value", onBookings, error => console.warn("Could not load bookings from Firebase", error));
@@ -310,7 +302,8 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
     const holdExpiresAt = Date.now() + PAYMENT.holdMinutes * 60 * 1000;
     const booking = { court:selectedCourt, date:dateInput.value, contactPhone:phone, note:document.querySelector("#booking-note").value.trim(), createdAt:new Date().toISOString(), status:"pending_payment", paymentStatus:"unpaid", holdExpiresAt, ownerUid:currentUser.uid, ownerName:currentUser.displayName || "Customer", startTime:selectedTime, durationHours:duration, totalPrice:bookingPrice(selectedTime, duration), reservationId };
     const updates = {};
-    reservedSlots.forEach((slot, index) => { updates[`bookings/${dateInput.value}/${courtKey(selectedCourt)}/${timeKey(slot)}`] = { ...booking, time:slot, isPrimary:index === 0 }; });
+    reservedSlots.forEach((slot, index) => { updates[`bookings/${dateInput.value}/${courtKey(selectedCourt)}/${timeKey(slot)}`] = { ...booking, time:slot, isPrimary:index === 0 }; updates[`availability/${dateInput.value}/${courtKey(selectedCourt)}/${timeKey(slot)}`] = availabilityRow(booking); });
+    updates[`userBookings/${currentUser.uid}/${reservationId}`] = userBookingRow(booking, courtKey(selectedCourt), reservedSlots.map(timeKey));
     if (db) await db.ref().update(updates); else reservedSlots.forEach(slot => demoBooked.add(`${selectedCourt}|${slot}`));
     activeReservation = { ...booking, slots: reservedSlots };
     openPaymentDialog(activeReservation);
@@ -324,7 +317,7 @@ function openPaymentDialog(reservation) { activeReservation = reservation; payme
 function updatePaymentHold() { if (!activeReservation) return; const remaining = Math.max(0, Math.ceil((Number(activeReservation.holdExpiresAt) - Date.now()) / 1000)), pill=document.querySelector("#payment-hold"); pill.classList.toggle("warning", remaining > 0 && remaining < 300); pill.classList.toggle("expired", !remaining); pill.textContent = remaining ? `● Held for you · ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}` : "Hold expired"; }
 function updateSubmitState() { document.querySelector("#submit-payment").disabled = document.querySelector("#payment-reference").value.trim().length < 6; }
 async function compressProof(file) { if (!file || !file.type.startsWith("image/")) throw new Error("Choose an image file."); if (file.size > 5 * 1024 * 1024) throw new Error("The image must be under 5 MB."); const image = await createImageBitmap(file), scale = Math.min(1, 1280 / image.width), canvas = document.createElement("canvas"); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale); canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height); return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .82)); }
-document.querySelector("#submit-payment").addEventListener("click", async () => { const reference = document.querySelector("#payment-reference").value.trim(), errorBox = document.querySelector("#payment-error"); errorBox.classList.add("hidden"); if (!activeReservation || reference.length < 6) { errorBox.textContent = "Enter a payment reference with at least 6 characters."; errorBox.classList.remove("hidden"); return; } const button = document.querySelector("#submit-payment"); button.disabled = true; button.textContent = "Submitting…"; let proofUrl = ""; try { const file = document.querySelector("#payment-proof").files[0]; if (file && storage) { try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${currentUser.uid}/${activeReservation.reservationId}.jpg`).put(blob, { contentType:"image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); } catch (uploadError) { document.querySelector("#payment-upload-note").textContent = "Screenshot could not be uploaded. Your reference number will still be submitted."; document.querySelector("#payment-upload-note").classList.remove("hidden"); } } const updates = {}; activeReservation.slots.forEach(slot => { const base = `bookings/${activeReservation.date}/${courtKey(activeReservation.court)}/${timeKey(slot)}`; updates[`${base}/paymentReference`] = reference; updates[`${base}/paymentMethod`] = paymentMethodId; updates[`${base}/proofSubmittedAt`] = Date.now(); if (proofUrl) updates[`${base}/proofUrl`] = proofUrl; }); await db.ref().update(updates); document.querySelector("#confirmation-text").textContent = "Payment submitted. We'll confirm your booking once staff verify it."; document.querySelector("#submit-payment").classList.add("hidden"); } catch (error) { errorBox.textContent = error.message || "We could not submit payment details."; errorBox.classList.remove("hidden"); } finally { button.disabled = false; button.textContent = "Submit payment"; } });
+document.querySelector("#submit-payment").addEventListener("click", async () => { const reference = document.querySelector("#payment-reference").value.trim(), errorBox = document.querySelector("#payment-error"); errorBox.classList.add("hidden"); if (!activeReservation || reference.length < 6) { errorBox.textContent = "Enter a payment reference with at least 6 characters."; errorBox.classList.remove("hidden"); return; } const button = document.querySelector("#submit-payment"); button.disabled = true; button.textContent = "Submitting…"; let proofUrl = ""; try { const file = document.querySelector("#payment-proof").files[0]; if (file && storage) { try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${currentUser.uid}/${activeReservation.reservationId}.jpg`).put(blob, { contentType:"image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); } catch (uploadError) { document.querySelector("#payment-upload-note").textContent = "Screenshot could not be uploaded. Your reference number will still be submitted."; document.querySelector("#payment-upload-note").classList.remove("hidden"); } } const updates = {}; activeReservation.slots.forEach(slot => { const base = `bookings/${activeReservation.date}/${courtKey(activeReservation.court)}/${timeKey(slot)}`; updates[`${base}/paymentReference`] = reference; updates[`${base}/paymentMethod`] = paymentMethodId; updates[`${base}/proofSubmittedAt`] = Date.now(); if (proofUrl) updates[`${base}/proofUrl`] = proofUrl; updates[`availability/${activeReservation.date}/${courtKey(activeReservation.court)}/${timeKey(slot)}/proofSubmittedAt`] = Date.now(); }); const mine = `userBookings/${currentUser.uid}/${activeReservation.reservationId}`; updates[`${mine}/paymentReference`] = reference; updates[`${mine}/paymentMethod`] = paymentMethodId; updates[`${mine}/proofSubmittedAt`] = Date.now(); await db.ref().update(updates); document.querySelector("#confirmation-text").textContent = "Payment submitted. We'll confirm your booking once staff verify it."; document.querySelector("#submit-payment").classList.add("hidden"); } catch (error) { errorBox.textContent = error.message || "We could not submit payment details."; errorBox.classList.remove("hidden"); } finally { button.disabled = false; button.textContent = "Submit payment"; } });
 document.querySelector("#dialog-close").addEventListener("click", () => document.querySelector("#booking-dialog").close());
 document.querySelector("#done-btn").addEventListener("click", () => document.querySelector("#booking-dialog").close());
 setInterval(updatePaymentHold, 1000);
@@ -333,7 +326,7 @@ document.querySelector("#payment-reference").addEventListener("focus", event => 
 document.querySelector("#payment-proof").addEventListener("change", event => { const preview = document.querySelector("#proof-preview"), file = event.target.files[0]; if (!file) { preview.classList.add("hidden"); preview.innerHTML = ""; return; } if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { document.querySelector("#payment-error").textContent = "Use a JPG or PNG image under 5 MB."; document.querySelector("#payment-error").classList.remove("hidden"); event.target.value = ""; return; } const url = URL.createObjectURL(file); preview.innerHTML = `<img src="${url}" alt="Selected screenshot" /><span>${file.name}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`; preview.classList.remove("hidden"); preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; preview.classList.add("hidden"); preview.innerHTML = ""; }; });
 function initSite() {
   if (SITE.address) document.querySelector("#footer-address").textContent = SITE.address;
-  if (SITE.address) document.querySelector("#footer-directions").href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SITE.address)}`;
+  document.querySelector("#footer-directions").href = mapsUrl();
   if (SITE.phone) { const link = document.querySelector("#footer-phone"); link.textContent = SITE.phone; link.href = `tel:${SITE.phone.replace(/[^\d+]/g, "")}`; link.classList.remove("hidden"); }
   const hero = document.querySelector("#hero-art");
   loadPhoto(hero.dataset.photo, () => { hero.style.setProperty("--photo", `url('${hero.dataset.photo}')`); hero.classList.add("has-photo"); });

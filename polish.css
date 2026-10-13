@@ -156,3 +156,4 @@ input,select{font-size:16px}
 .booking-card,.summary-card{min-width:0}
 @media(max-width:700px){.booking-layout{grid-template-columns:minmax(0,1fr)}}
 .court-tabs{overflow-x:auto;scrollbar-width:none}.court-tab{white-space:nowrap;flex:none}@media(max-width:700px){.court-tabs{gap:16px}}
+.payment-tabs{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}

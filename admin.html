@@ -1,2 +1,118 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="theme-color" content="#14509a"><title>Admin — Mayha Courts</title><link rel="icon" href="./mayha-logo-64.png" type="image/png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="./admin.css"><link rel="stylesheet" href="./brand-theme.css"></head><body><header><a href="./index.html" class="brand"><img src="./mayha-logo-128.webp" alt="Mayha Square Pickleball Court">MAYHA <b>COURTS</b></a><div class="account"><a href="./staff-tools.html" class="tools-link">Staff tools</a><span id="admin-email"></span><button id="sign-out">Sign out</button></div></header><main><section id="loading" class="state"><div class="spinner"></div><p>Checking administrator access…</p></section><section id="denied" class="state hidden"><p class="eyebrow">ACCESS RESTRICTED</p><h1>This page is for staff.</h1><p>Your signed-in account has not been added as an administrator yet.</p><a href="./index.html" class="button">Back to bookings</a></section><section id="dashboard" class="hidden"><div class="heading"><div><p class="eyebrow">COURT OPERATIONS</p><h1>Reservations.</h1></div><a href="./staff-tools.html" class="button">Open staff tools →</a></div><div class="metrics"><article><span>Reservations</span><strong id="today-count">0</strong></article><article><span>Revenue</span><strong id="revenue-count">₱0</strong></article><article><span>Peak slot</span><strong id="peak-count">—</strong></article><article><span>Utilization</span><strong id="utilization-count">0%</strong></article></div><div class="controls"><label>DATE <input type="date" id="filter-date"></label><label>STATUS <select id="filter-status"><option value="all">All statuses</option><option value="confirmed">Confirmed</option><option value="checked_in">Checked in</option><option value="cancelled">Cancelled</option><option value="no_show">No show</option></select></label><button id="refresh" class="outline">Refresh</button></div><section class="schedule"><div class="schedule-title"><h2>Four-court calendar</h2><span id="booking-count"></span></div><div id="calendar" class="calendar"></div></section><section class="schedule reservation-list"><div class="schedule-title"><h2>Reservations</h2></div><div id="booking-list" class="booking-list"></div></section></section></main><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><script src="./admin.js"></script></body></html>
-<script src="./admin-manual.js"></script>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <meta name="theme-color" content="#f3f8fc">
+  <title>Admin — Mayha Courts</title>
+  <link rel="icon" href="./mayha-logo-64.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+  <header class="bar">
+    <a href="./index.html" class="brand"><img src="./mayha-logo-64.webp" width="30" height="30" alt="">MAYHA <b>COURTS</b> <span class="brand-tag">Staff</span></a>
+    <div class="bar-right">
+      <span class="live" id="live" data-state="connecting"><i></i><span>Connecting</span></span>
+      <span class="admin-email" id="admin-email"></span>
+      <button type="button" class="ghost" id="sign-out">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="loading" class="state"><div class="spinner"></div><p>Checking staff access…</p></section>
+    <section id="denied" class="state hidden"><h1>This page is for staff.</h1><p>Your account hasn't been added as an administrator yet.</p><a href="./index.html" class="btn primary">Back to bookings</a></section>
+
+    <section id="dashboard" class="hidden">
+      <div class="migration hidden" id="migration"><div><b>One-time update needed</b><p>Copy existing bookings into the new private layout so customers can see them in My Bookings. Publish the new database rules first.</p></div><button type="button" class="btn primary" id="run-migration">Copy bookings</button></div>
+      <div class="toolbar">
+        <div class="date-nav">
+          <button type="button" class="icon-btn" id="prev-day" aria-label="Previous day">‹</button>
+          <button type="button" class="ghost" id="today-btn">Today</button>
+          <button type="button" class="icon-btn" id="next-day" aria-label="Next day">›</button>
+          <h1 id="date-title">Today</h1>
+          <label class="date-picker"><span class="sr-only">Pick a date</span><input type="date" id="filter-date"></label>
+        </div>
+        <label class="filter"><span>Show</span>
+          <select id="filter-status">
+            <option value="all">All bookings</option>
+            <option value="pending_payment">Awaiting payment</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="checked_in">Checked in</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="no_show">No show</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="metrics">
+        <article><span>Bookings</span><strong id="m-bookings">0</strong><small id="m-bookings-sub">today</small></article>
+        <article><span>Paid revenue</span><strong id="m-revenue">₱0</strong><small id="m-revenue-sub">0 paid</small></article>
+        <article><span>Awaiting payment</span><strong id="m-awaiting">0</strong><small id="m-awaiting-sub">0 to review</small></article>
+        <article><span>Hours booked</span><strong id="m-hours">0/96</strong><small id="m-hours-sub">0% of court time</small></article>
+      </div>
+
+      <div class="work">
+        <section class="card calendar-card">
+          <div class="card-head"><h2>Courts</h2><div class="legend"><span class="lg pending">Awaiting payment</span><span class="lg confirmed">Confirmed</span><span class="lg checked_in">Checked in</span><span class="lg blocked">Blocked</span></div></div>
+          <p class="hint">Tap an empty slot to add a walk-in.</p>
+          <div class="calendar-scroll" id="calendar-scroll"><div class="calendar" id="calendar"></div></div>
+        </section>
+
+        <aside class="card panel" id="tools">
+          <div class="segmented" role="tablist">
+            <button type="button" role="tab" class="active" data-tab="walkin" aria-selected="true">Walk-in</button>
+            <button type="button" role="tab" data-tab="block" aria-selected="false">Block court</button>
+          </div>
+
+          <form id="walk-in-form" novalidate class="tool-form" data-panel="walkin">
+            <label>Customer name<input id="walkin-name" required autocomplete="off" placeholder="e.g. Juan dela Cruz"></label>
+            <label>Contact number<input id="walkin-phone" type="tel" inputmode="tel" autocomplete="off" placeholder="09XX XXX XXXX"></label>
+            <div class="two">
+              <label>Court<select id="walkin-court"><option>Court 1</option><option>Court 2</option><option>Court 3</option><option>Court 4</option></select></label>
+              <label>Start<select id="walkin-time"></select></label>
+            </div>
+            <div class="two">
+              <label>Hours<select id="walkin-hours"><option value="1">1 hour</option><option value="2" selected>2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
+              <label>Payment<select id="walkin-payment"><option value="unpaid">Not paid yet</option><option value="cash">Paid · Cash</option><option value="gcash">Paid · GCash</option><option value="maya">Paid · Maya</option></select></label>
+            </div>
+            <label>Total<input id="walkin-price" type="number" min="0" inputmode="numeric" placeholder="₱0"><small class="field-hint" id="walkin-price-hint"></small></label>
+            <label>Note<input id="walkin-note" autocomplete="off" placeholder="Optional"></label>
+            <p class="form-error hidden" id="walkin-error" role="alert"></p>
+            <button class="btn primary wide" type="submit">Create walk-in</button>
+          </form>
+
+          <form id="block-form" novalidate class="tool-form hidden" data-panel="block">
+            <div class="two">
+              <label>Court<select id="block-court"><option>All courts</option><option>Court 1</option><option>Court 2</option><option>Court 3</option><option>Court 4</option></select></label>
+              <label>Start<select id="block-time"></select></label>
+            </div>
+            <label>Length<select id="block-hours"><option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option><option value="24">Full day</option></select></label>
+            <label>Reason<input id="block-reason" required autocomplete="off" placeholder="e.g. Resurfacing, private event"></label>
+            <p class="form-error hidden" id="block-error" role="alert"></p>
+            <button class="btn danger wide" type="submit">Block time</button>
+          </form>
+
+          <div class="active-blocks"><h3>Blocks on this day</h3><div id="active-block-list"></div></div>
+        </aside>
+      </div>
+
+      <section class="card list-card">
+        <div class="card-head"><h2>Reservations</h2><span id="booking-count" class="muted"></span></div>
+        <p class="hint">Check the reference and amount in your own GCash or Maya app before marking a booking as paid.</p>
+        <div id="booking-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="staff-modal" id="staff-modal"></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="./admin.js"></script>
+</body>
+</html>
