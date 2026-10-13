@@ -12,7 +12,6 @@ const firebaseConfig = {
 const firebaseReady = !Object.values(firebaseConfig).some(value => value.startsWith("YOUR_"));
 let db = null;
 let auth = null;
-let storage = null;
 let currentUser = null;
 let creatingAccount = false;
 let isAdmin = false;
@@ -85,7 +84,6 @@ async function connectFirebase() {
     const app = window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(firebaseConfig);
     db = app.database();
     auth = app.auth();
-    storage = app.storage();
     auth.onAuthStateChanged(user => {
       currentUser = user;
       isAdmin = false;
@@ -343,17 +341,16 @@ async function holdAgain(event) {
   } catch (error) { console.error(error); button.disabled = false; button.textContent = "Hold again"; }
 }
 function updateSubmitState() { document.querySelector("#submit-payment").disabled = document.querySelector("#payment-reference").value.trim().length < 6; }
-async function compressProof(file) { if (!file || !file.type.startsWith("image/")) throw new Error("Choose an image file."); if (file.size > 5 * 1024 * 1024) throw new Error("The image must be under 5 MB."); const image = await createImageBitmap(file), scale = Math.min(1, 1280 / image.width), canvas = document.createElement("canvas"); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale); canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height); return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .82)); }
 document.querySelector("#submit-payment").addEventListener("click", async () => {
   const reference = document.querySelector("#payment-reference").value.trim(), errorBox = document.querySelector("#payment-error");
   errorBox.classList.add("hidden");
   if (!activeReservation || reference.length < 6) { errorBox.textContent = "Enter a payment reference with at least 6 characters."; errorBox.classList.remove("hidden"); return; }
   const button = document.querySelector("#submit-payment"); button.disabled = true; button.textContent = "Checking your slot…";
-  let proofUrl = "";
+  let hasProof = false;
   try {
     const file = document.querySelector("#payment-proof").files[0];
-    if (file && storage) { try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${currentUser.uid}/${activeReservation.reservationId}.jpg`).put(blob, { contentType:"image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); } catch (uploadError) { document.querySelector("#payment-upload-note").textContent = "Screenshot could not be uploaded. Your reference number will still be submitted."; document.querySelector("#payment-upload-note").classList.remove("hidden"); } }
-    const payment = { reference, method: paymentMethodId, proofUrl, name: currentUser.displayName || currentUser.email };
+    if (file && db) { button.textContent = "Saving screenshot…"; try { hasProof = await saveProof(db, currentUser.uid, activeReservation.reservationId, file); } catch (proofError) { console.warn(proofError); document.querySelector("#payment-upload-note").textContent = "Your screenshot couldn't be saved, but your reference number will still be sent."; document.querySelector("#payment-upload-note").classList.remove("hidden"); } button.textContent = "Checking your slot…"; }
+    const payment = { reference, method: paymentMethodId, hasProof, name: currentUser.displayName || currentUser.email };
     const result = await submitPaymentSafely(db, currentUser.uid, activeReservation, activeReservation.courtKey, activeReservation.timeKeys, payment);
     if (result.outcome === "noHold") { errorBox.innerHTML = "Your hold ran out and you already have 2 other unpaid holds. Cancel one in <a href=\"./my-bookings.html\">My bookings</a>, then submit again."; errorBox.classList.remove("hidden"); return; }
     if (result.outcome === "cancelled") { errorBox.textContent = "This booking was cancelled, so we can't take a payment for it."; errorBox.classList.remove("hidden"); return; }
@@ -378,7 +375,7 @@ document.querySelector("#done-btn").addEventListener("click", () => document.que
 setInterval(updatePaymentHold, 1000);
 document.querySelector("#payment-reference").addEventListener("input", updateSubmitState);
 document.querySelector("#payment-reference").addEventListener("focus", event => event.target.scrollIntoView({ block:"center", behavior:"smooth" }));
-document.querySelector("#payment-proof").addEventListener("change", event => { const preview = document.querySelector("#proof-preview"), file = event.target.files[0]; if (!file) { preview.classList.add("hidden"); preview.innerHTML = ""; return; } if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { document.querySelector("#payment-error").textContent = "Use a JPG or PNG image under 5 MB."; document.querySelector("#payment-error").classList.remove("hidden"); event.target.value = ""; return; } const url = URL.createObjectURL(file); preview.innerHTML = `<img src="${url}" alt="Selected screenshot" /><span>${file.name}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`; preview.classList.remove("hidden"); preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; preview.classList.add("hidden"); preview.innerHTML = ""; }; });
+document.querySelector("#payment-proof").addEventListener("change", event => { const preview = document.querySelector("#proof-preview"), file = event.target.files[0]; if (!file) { preview.classList.add("hidden"); preview.innerHTML = ""; return; } if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) { document.querySelector("#payment-error").textContent = "Use a JPG or PNG image under 15 MB."; document.querySelector("#payment-error").classList.remove("hidden"); event.target.value = ""; return; } const url = URL.createObjectURL(file); preview.innerHTML = `<img src="${url}" alt="Selected screenshot" /><span>${file.name}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`; preview.classList.remove("hidden"); preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; preview.classList.add("hidden"); preview.innerHTML = ""; }; });
 function initSite() {
   if (SITE.address) document.querySelector("#footer-address").textContent = SITE.address;
   document.querySelector("#footer-directions").href = mapsUrl();

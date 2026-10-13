@@ -16,7 +16,8 @@ const mapsUrl = () => `https://www.google.com/maps/search/?api=1&query=${encodeU
 const BOOKING_RULES = {
   maxUnpaidHolds: 2,          // unpaid holds one account can have at once (also enforced by the database rules)
   reviewHours: 6,             // a submitted payment holds the slot this long at most, or until play starts
-  lastCallMs: 2 * 60 * 1000   // in the last 2 minutes of a hold, customers are told not to send money
+  lastCallMs: 2 * 60 * 1000,  // in the last 2 minutes of a hold, customers are told not to send money
+  proofRetentionDays: 60      // payment screenshots older than this are deleted by the staff dashboard
 };
 const HOUR_MS = 3600000;
 
@@ -98,7 +99,7 @@ function paymentUpdates(uid, booking, courtKeyValue, timeKeys, payment) {
   const now = Date.now(), updates = {}, first = !booking.proofSubmittedAt;
   const reviewExpiresAt = first ? reviewDeadline(booking.date, booking.startTime, now) : booking.reviewExpiresAt;
   const legacy = !first && !booking.reviewExpiresAt, legacyDeadline = Number(booking.proofSubmittedAt) + BOOKING_RULES.reviewHours * HOUR_MS;
-  const fields = { paymentReference: payment.reference, paymentMethod: payment.method, ...(first ? { proofSubmittedAt: now, reviewExpiresAt } : {}), ...(legacy ? { reviewExpiresAt: legacyDeadline } : {}), ...(payment.proofUrl ? { proofUrl: payment.proofUrl } : {}) };
+  const fields = { paymentReference: payment.reference, paymentMethod: payment.method, ...(first ? { proofSubmittedAt: now, reviewExpiresAt } : {}), ...(legacy ? { reviewExpiresAt: legacyDeadline } : {}), ...(payment.hasProof ? { hasProof: true } : {}) };
   timeKeys.forEach(tk => {
     Object.entries(fields).forEach(([f, v]) => updates[`bookings/${booking.date}/${courtKeyValue}/${tk}/${f}`] = v);
     if (first) { updates[`availability/${booking.date}/${courtKeyValue}/${tk}/proofSubmittedAt`] = now; updates[`availability/${booking.date}/${courtKeyValue}/${tk}/reviewExpiresAt`] = reviewExpiresAt; }
@@ -107,13 +108,14 @@ function paymentUpdates(uid, booking, courtKeyValue, timeKeys, payment) {
   const mine = `userBookings/${uid}/${booking.reservationId}`;
   updates[`${mine}/paymentReference`] = payment.reference; updates[`${mine}/paymentMethod`] = payment.method;
   if (first) { updates[`${mine}/proofSubmittedAt`] = now; updates[`${mine}/reviewExpiresAt`] = reviewExpiresAt; }
-  if (booking.holdSlot !== undefined && booking.holdSlot !== null) updates[`holdSlots/${uid}/${booking.holdSlot}`] = null;
+  /* The first payment releases the hold ticket. Later updates leave tickets alone: this one is already gone and may now belong to another booking. */
+  if (first && booking.holdSlot !== undefined && booking.holdSlot !== null) updates[`holdSlots/${uid}/${booking.holdSlot}`] = null;
   updates[`paymentLog/${booking.reservationId}`] = paymentLogEntry(uid, booking, courtKeyValue, timeKeys, payment, "submitted");
   return { updates, reviewExpiresAt: reviewExpiresAt || legacyDeadline };
 }
 /* A record staff can see even if the booking itself is later released or rebooked. */
 function paymentLogEntry(uid, booking, courtKeyValue, timeKeys, payment, state) {
-  return { uid, name: payment.name || "Customer", reference: payment.reference, method: payment.method, amount: Number(booking.totalPrice || 0), date: booking.date, court: booking.court, courtKey: courtKeyValue, first: timeKeys[0], startTime: booking.startTime, durationHours: Number(booking.durationHours || 1), state, submittedAt: Date.now(), ...(payment.proofUrl ? { proofUrl: payment.proofUrl } : {}) };
+  return { uid, name: payment.name || "Customer", reference: payment.reference, method: payment.method, amount: Number(booking.totalPrice || 0), date: booking.date, court: booking.court, courtKey: courtKeyValue, first: timeKeys[0], startTime: booking.startTime, durationHours: Number(booking.durationHours || 1), state, submittedAt: Date.now(), ...(payment.hasProof ? { hasProof: true } : {}) };
 }
 
 /* Turns a booking (or the customer's own copy of it) into a clean private row for re-holding. */
@@ -132,7 +134,7 @@ async function submitPaymentSafely(db, uid, booking, courtKeyValue, timeKeys, pa
     const ticket = await freeHoldSlot(db, uid);
     if (ticket !== null) {
       const now = Date.now(), reviewExpiresAt = reviewDeadline(booking.date, booking.startTime, now);
-      const fresh = { ...cleanBooking(booking, uid, payment.name), status: "pending_payment", paymentStatus: "unpaid", holdSlot: ticket, holdExpiresAt: now + PAYMENT.holdMinutes * 60000, paymentReference: payment.reference, paymentMethod: payment.method, proofSubmittedAt: now, reviewExpiresAt, ...(payment.proofUrl ? { proofUrl: payment.proofUrl } : {}) };
+      const fresh = { ...cleanBooking(booking, uid, payment.name), status: "pending_payment", paymentStatus: "unpaid", holdSlot: ticket, holdExpiresAt: now + PAYMENT.holdMinutes * 60000, paymentReference: payment.reference, paymentMethod: payment.method, proofSubmittedAt: now, reviewExpiresAt, ...(payment.hasProof ? { hasProof: true } : {}) };
       const updates = holdUpdates(uid, fresh, courtKeyValue, timeKeys);
       updates[`paymentLog/${booking.reservationId}`] = paymentLogEntry(uid, fresh, courtKeyValue, timeKeys, payment, "submitted");
       try { await db.ref().update(updates); return { outcome: "reheld", reviewExpiresAt }; } catch (error) { if (error?.code !== "PERMISSION_DENIED") throw error; }
@@ -152,7 +154,33 @@ async function reholdSafely(db, uid, booking, courtKeyValue, timeKeys, name) {
   const ticket = await freeHoldSlot(db, uid);
   if (ticket === null) return { outcome: "noHold" };
   const fresh = { ...cleanBooking(booking, uid, name), status: "pending_payment", paymentStatus: "unpaid", holdSlot: ticket, holdExpiresAt: Date.now() + PAYMENT.holdMinutes * 60000 };
-  ["paymentReference", "paymentMethod", "proofSubmittedAt", "reviewExpiresAt", "proofUrl", "paidAt", "verifiedBy", "cancellationReason"].forEach(f => delete fresh[f]);
+  ["paymentReference", "paymentMethod", "proofSubmittedAt", "reviewExpiresAt", "proofUrl", "hasProof", "paidAt", "verifiedBy", "cancellationReason"].forEach(f => delete fresh[f]);
   try { await db.ref().update(holdUpdates(uid, fresh, courtKeyValue, timeKeys)); return { outcome: "reheld", holdExpiresAt: fresh.holdExpiresAt, holdSlot: ticket }; }
   catch (error) { if (error?.code === "PERMISSION_DENIED") return { outcome: "taken" }; throw error; }
+}
+
+/* ---------- payment screenshots (kept in the Realtime Database, readable by staff only) ---------- */
+/* Shrinks a receipt screenshot to a small JPEG data URL: about 80 KB, never more than about 110 KB. */
+async function shrinkProof(file) {
+  if (!file || !file.type.startsWith("image/")) throw new Error("Choose a JPG or PNG image.");
+  if (file.size > 15 * 1024 * 1024) throw new Error("That image is too large.");
+  const image = await createImageBitmap(file), canvas = document.createElement("canvas"), context = canvas.getContext("2d");
+  let width = Math.min(720, image.width), quality = 0.72, dataUrl = "";
+  for (let attempt = 0; attempt < 8; attempt++) {
+    canvas.width = width; canvas.height = Math.round(image.height * width / image.width);
+    context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    dataUrl = canvas.toDataURL("image/jpeg", quality);
+    if (dataUrl.length <= 110000) return dataUrl;
+    if (quality > 0.5) quality -= 0.1; else width = Math.round(width * 0.8);
+  }
+  if (dataUrl.length <= 150000) return dataUrl;
+  throw new Error("Couldn't make that image small enough.");
+}
+const withTimeout = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
+/* Saves the screenshot for a booking. Gives up after 15 seconds so it never holds up the reference number. */
+async function saveProof(db, uid, reservationId, file) {
+  const image = await shrinkProof(file);
+  await withTimeout(db.ref(`paymentProofs/${reservationId}`).set({ uid, image, createdAt: Date.now() }), 15000);
+  return true;
 }

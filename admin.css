@@ -228,3 +228,11 @@ button.cal-slot:focus-visible:after{opacity:1}
 .resolve-row span{display:block;font-size:13px;color:var(--muted)}
 .resolve-row small{display:block;margin-top:2px;font-size:12px;font-weight:600;color:#a33b23}
 @media(max-width:700px){.resolve-row{flex-direction:column;align-items:flex-start}}
+
+/* Payment screenshots */
+.proof-btn{display:grid;place-items:center;padding:0;border:1px solid #bfd7e8;background:#f3f8fc;color:var(--ink);cursor:pointer;transition:transform 160ms var(--ease-out),background-color 150ms ease}
+.proof-btn:active{transform:scale(.95)}
+@media(hover:hover) and (pointer:fine){.proof-btn:hover{background:#e3f1fc;border-color:var(--sky)}}
+.staff-modal:has(.proof-view){width:min(520px,94vw)}
+.proof-view{display:grid;place-items:center;min-height:160px;margin:0 0 14px;border-radius:var(--r-control);background:var(--cream);overflow:hidden}
+.proof-view img{display:block;max-width:100%;max-height:min(70vh,640px);object-fit:contain}

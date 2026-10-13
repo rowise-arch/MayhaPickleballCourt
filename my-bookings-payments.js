@@ -1,5 +1,4 @@
 /* Pay now dialog for My Bookings. Same layout as the booking page; payment details come from site-config.js. */
-const storage = app.storage();
 let payingId = null, methodId = PAYMENT.methods[0]?.id;
 
 /* ---------- payment dialog (same layout as the booking page) ---------- */
@@ -16,7 +15,7 @@ function openPayment(b) {
     <section class="payment-qr-card" id="method-details"></section>
     <p class="payment-helper">Pay the exact amount, then enter your reference number below.</p>
     <div class="payment-field"><label for="pay-reference">REFERENCE NUMBER</label><input id="pay-reference" type="text" minlength="6" autocomplete="off" autocapitalize="characters" placeholder="Enter your payment reference" value="${safe(b.paymentReference || "")}"><p>Find this in your payment confirmation (at least 6 characters).</p></div>
-    <div class="payment-field"><span>SCREENSHOT (OPTIONAL)</span><input id="pay-proof" class="visually-hidden" type="file" accept="image/png,image/jpeg"><label class="proof-dropzone" for="pay-proof"><b>↑ Upload screenshot</b><small>JPG or PNG, up to 5 MB</small></label><div class="proof-preview hidden" id="proof-preview"></div></div>
+    <div class="payment-field"><span>SCREENSHOT (OPTIONAL)</span><input id="pay-proof" class="visually-hidden" type="file" accept="image/png,image/jpeg"><label class="proof-dropzone" for="pay-proof"><b>↑ Upload screenshot</b><small>JPG or PNG, up to 15 MB</small></label><div class="proof-preview hidden" id="proof-preview"></div></div>
     <p class="auth-error hidden" id="pay-error" role="alert"></p>
     <div class="payment-submitted hidden" id="pay-done"><div>✓</div><strong>Payment sent</strong><p>We'll confirm your booking once staff verify it.</p></div>
   </div>
@@ -35,7 +34,7 @@ function openPayment(b) {
   $("#pay-proof").onchange = event => {
     const file = event.target.files[0], preview = $("#proof-preview"), error = $("#pay-error"); error.classList.add("hidden");
     if (!file) { preview.classList.add("hidden"); preview.innerHTML = ""; return; }
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { error.textContent = "Use a JPG or PNG image under 5 MB."; error.classList.remove("hidden"); event.target.value = ""; return; }
+    if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) { error.textContent = "Use a JPG or PNG image under 15 MB."; error.classList.remove("hidden"); event.target.value = ""; return; }
     const url = URL.createObjectURL(file);
     preview.innerHTML = `<img src="${url}" alt="Selected screenshot"><span>${safe(file.name)}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`;
     preview.classList.remove("hidden");
@@ -44,12 +43,6 @@ function openPayment(b) {
   submit.onclick = () => submitPayment(b);
   dialog.showModal();
   watchHold(b);
-}
-async function compressProof(file) {
-  const image = await createImageBitmap(file), scale = Math.min(1, 1280 / image.width), canvas = document.createElement("canvas");
-  canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale);
-  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-  return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .82));
 }
 /* ---------- late-payment guard ---------- */
 let holdWatch = null;
@@ -89,14 +82,16 @@ async function submitPayment(b) {
   if (reference.length < 6) { error.textContent = "Enter a reference with at least 6 characters."; error.classList.remove("hidden"); return; }
   button.disabled = true; button.textContent = "Checking your slot…";
   try {
-    let proofUrl = "";
+    let hasProof = false;
     const file = $("#pay-proof").files[0];
     if (file) {
-      try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${user.uid}/${b.reservationId}.jpg`).put(blob, { contentType: "image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); }
-      catch (uploadError) { console.warn(uploadError); toast("Screenshot didn't upload. Your reference was still sent.", "error"); }
+      button.textContent = "Saving screenshot…";
+      try { hasProof = await saveProof(db, user.uid, b.reservationId, file); }
+      catch (proofError) { console.warn(proofError); toast("Your screenshot couldn't be saved, but your reference was still sent.", "error"); }
+      button.textContent = "Checking your slot…";
     }
     const ck = b.courtKey || b.court.toLowerCase().replace(" ", "-");
-    const result = await submitPaymentSafely(db, user.uid, b, ck, slotKeysFor(b), { reference, method: methodId, proofUrl, name: user.displayName || user.email });
+    const result = await submitPaymentSafely(db, user.uid, b, ck, slotKeysFor(b), { reference, method: methodId, hasProof, name: user.displayName || user.email });
     if (result.outcome === "noHold") { error.textContent = "Your hold ran out and you already have 2 other unpaid holds. Cancel one, then submit again."; error.classList.remove("hidden"); return; }
     if (result.outcome === "cancelled") { error.textContent = "This booking was cancelled, so we can't take a payment for it."; error.classList.remove("hidden"); return; }
     clearInterval(holdWatch); setPayAlert("", "", b);

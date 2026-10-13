@@ -71,7 +71,7 @@ These limits live in `BOOKING_RULES` in `site-config.js`. If you change the revi
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
         "$n": {
-          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth.uid === $uid && ($n === '0' || $n === '1') && ((newData.exists() && (!data.exists() || data.child('expiresAt').val() <= now) && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() <= now + 3600000 && newData.child('rid').isString()) || (!newData.exists() && data.exists() && (data.child('expiresAt').val() <= now || ((newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('status').val() === 'cancelled' || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('proofSubmittedAt').exists() || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('ownerUid').val() !== $uid || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('reservationId').val() !== data.child('rid').val()) && (newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('status').val() === 'cancelled' || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('proofSubmittedAt').exists() || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('ownerUid').val() !== $uid || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('reservationId').val() !== data.child('rid').val())))))))"
+          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth.uid === $uid && ($n === '0' || $n === '1') && ((newData.exists() && (!data.exists() || data.child('expiresAt').val() <= now) && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() <= now + 3600000 && newData.child('rid').isString()) || (!newData.exists() && !data.exists()) || (!newData.exists() && data.exists() && (data.child('expiresAt').val() <= now || ((newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('status').val() === 'cancelled' || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('proofSubmittedAt').exists() || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('ownerUid').val() !== $uid || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('first').val()).child('reservationId').val() !== data.child('rid').val()) && (newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('status').val() === 'cancelled' || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('proofSubmittedAt').exists() || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('ownerUid').val() !== $uid || newData.parent().parent().parent().child('bookings').child(data.child('date').val()).child(data.child('court').val()).child(data.child('last').val()).child('reservationId').val() !== data.child('rid').val())))))))"
         }
       }
     },
@@ -79,6 +79,16 @@ These limits live in `BOOKING_RULES` in `site-config.js`. If you change the revi
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$reservationId": {
         ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (newData.exists() && newData.child('uid').val() === auth.uid && (!data.exists() || data.child('uid').val() === auth.uid) && (!data.exists() || data.child('state').val() === 'submitted' || data.child('state').val() === 'slot_lost') && (newData.child('state').val() === 'submitted' || newData.child('state').val() === 'slot_lost')))"
+      }
+    },
+    "paymentProofs": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".indexOn": [
+        "createdAt"
+      ],
+      "$reservationId": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (newData.exists() && $reservationId.beginsWith(auth.uid + '-') && newData.child('uid').val() === auth.uid && (!data.exists() || data.child('uid').val() === auth.uid)))",
+        ".validate": "!newData.exists() || (newData.hasChildren(['uid','image','createdAt']) && newData.child('image').isString() && newData.child('image').val().beginsWith('data:image/jpeg;base64,') && newData.child('image').val().length <= 150000 && newData.child('createdAt').isNumber() && newData.child('createdAt').val() <= now + 60000)"
       }
     }
   }
@@ -103,31 +113,23 @@ Court pricing is calculated per hour from the selected Philippine date: Monday�
 
 Edit `SITE` and `PAYMENT` in `site-config.js` (shared by the booking page and My Bookings). Replace each `YOUR NAME HERE` and `09XX XXX XXXX` placeholder; a method whose number still contains X is hidden from customers. Put your optional QR images in the project root as `gcash-qr.png` and `maya-qr.png`; a missing file simply hides the QR and still shows the account details.
 
-Customers choose a court, receive a 30-minute hold, pay the exact displayed amount in GCash or Maya, then enter the payment reference and optionally upload a screenshot. Staff must check the reference and amount in their own GCash/Maya app before using **Mark as paid**. A screenshot is optional, so Firebase Storage failure never prevents reference submission.
+Customers choose a court, receive a 30-minute hold, pay the exact displayed amount in GCash or Maya, then enter the payment reference and optionally attach a screenshot. Staff must check the reference and amount in their own GCash/Maya app before using **Mark as paid**. A screenshot is optional, and a failed screenshot never stops the reference from being submitted.
 
-### Firebase Storage rules
+### Payment screenshots
 
-In **Build → Storage → Rules**, publish:
+Screenshots are saved in the Realtime Database under `paymentProofs`, not Firebase Storage, so the free Spark plan is enough (Storage now requires the Blaze plan). Before saving, the browser shrinks each screenshot to a small JPEG of about 30–80 KB, still sharp enough to read a GCash receipt. The rules above make sure that:
 
-```text
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /payment-proofs/{uid}/{fileName} {
-      allow write: if request.auth != null && request.auth.uid == uid
-        && request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
-      allow read: if request.auth != null && (request.auth.uid == uid || request.auth.token.admin == true);
-    }
-  }
-}
-```
+- only the customer who owns the booking can save its screenshot, and only images under about 110 KB;
+- only staff can view screenshots. They load one at a time when staff tap the screenshot button on a booking, so the list doesn't use up the database's download allowance;
+- the staff dashboard deletes screenshots older than 60 days, at most once a day. Change `proofRetentionDays` in `site-config.js` to keep them longer.
 
-Storage rules cannot read Realtime Database `admins`. To let staff open proof files, give staff an Auth custom claim `admin: true` (requires the Admin SDK once) and have them sign out/in; otherwise staff can use the proof URL stored on the booking. The customer upload restriction above remains essential.
+If saving a screenshot fails or takes longer than 15 seconds, the reference number is still sent.
+
+You no longer need Firebase Storage. If you published Storage rules earlier, you can leave them; the site doesn't use Storage any more.
 
 ### Rules Playground tests
 
-In Realtime Database **Rules → Rules Playground**, simulate a signed-in normal UID creating a `pending_payment` row with its own `ownerUid`; it should allow. Change `paymentStatus` to `paid` or `status` to `confirmed`; it should deny. Simulate an admin UID under `/admins/UID: true`; it should allow. In Storage **Rules → Rules Playground**, test an `image/jpeg` below 5 MB to `payment-proofs/UID/x.jpg` as UID (allow), then a PDF, 6 MB file, and another UID path (deny).
+In Realtime Database **Rules → Rules Playground**, simulate a signed-in normal UID creating a `pending_payment` row with its own `ownerUid`; it should allow. Change `paymentStatus` to `paid` or `status` to `confirmed`; it should deny. Simulate an admin UID under `/admins/UID: true`; it should allow. Then simulate a write to `paymentProofs/UID-123` as that UID with a small `data:image/jpeg;base64,…` image (allow), and the same write from another UID (deny).
 
 ## Operations pages
 

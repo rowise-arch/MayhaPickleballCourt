@@ -219,7 +219,7 @@ function rowHtml(b, all) {
       ${reviewTimedOut(b) ? `<span class="badge danger">Not reviewed in time · slot released</span>` : ""}
       ${b.cancellationReason && b.status === "cancelled" ? `<div class="row-note">Reason: ${safe(b.cancellationReason)}</div>` : ""}
     </div>
-    ${b.proofUrl ? `<a class="proof-thumb" href="${safe(b.proofUrl)}" target="_blank" rel="noopener" title="Open payment screenshot"><img src="${safe(b.proofUrl)}" alt="Payment screenshot" loading="lazy"></a>` : `<span class="proof-thumb empty" aria-hidden="true"></span>`}
+    ${b.hasProof ? `<button type="button" class="proof-thumb proof-btn" data-proof="${safe(b.reservationId)}" aria-label="View payment screenshot" title="View payment screenshot"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="2" fill="currentColor"/><path d="m21 16-5-5-9 9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>` : b.proofUrl ? `<a class="proof-thumb" href="${safe(b.proofUrl)}" target="_blank" rel="noopener" title="Open payment screenshot"><img src="${safe(b.proofUrl)}" alt="Payment screenshot" loading="lazy"></a>` : `<span class="proof-thumb empty" aria-hidden="true"></span>`}
     <div class="row-status"><span class="status ${statusClass(b)}">${safe(statusName(b))}</span>${paidBit}</div>
     ${actions}
   </article>`;
@@ -239,6 +239,34 @@ function renderList(list) {
   document.querySelectorAll('[data-act="paid"]').forEach(btn => btn.onclick = () => markPaid(byId(btn.dataset.id)));
   document.querySelectorAll('[data-act="reject"]').forEach(btn => btn.onclick = () => changeStatus(byId(btn.dataset.id), "cancelled", btn));
   document.querySelectorAll(".status-select").forEach(sel => sel.onchange = () => changeStatus(byId(sel.dataset.id), sel.value, sel));
+  document.querySelectorAll("#booking-list [data-proof]").forEach(btn => btn.onclick = () => viewProof(btn.dataset.proof, byId(btn.dataset.proof)));
+}
+/* Screenshots are only downloaded when staff ask for them. */
+async function viewProof(reservationId, booking) {
+  const modal = $("#staff-modal");
+  modal.innerHTML = `<h2>Payment screenshot</h2><p>${safe(booking?.ownerName || "Customer")}${booking?.paymentReference ? ` · Ref <span class="mono">${safe(booking.paymentReference)}</span>` : ""}${booking?.totalPrice ? ` · ${peso(booking.totalPrice)}` : ""}</p><div class="proof-view"><div class="spinner"></div></div><div class="modal-actions"><a class="btn ghost hidden" data-download download="payment-${safe(reservationId)}.jpg">Download</a><button type="button" class="btn primary" data-act="close">Close</button></div>`;
+  modal.querySelector('[data-act="close"]').onclick = () => modal.close();
+  modal.oncancel = null;
+  modal.showModal();
+  try {
+    const proof = (await db.ref(`paymentProofs/${reservationId}`).once("value")).val();
+    const view = modal.querySelector(".proof-view");
+    if (!proof?.image) { view.innerHTML = `<p class="empty small">This screenshot is no longer available. Screenshots are kept for ${BOOKING_RULES.proofRetentionDays} days.</p>`; return; }
+    view.innerHTML = `<img src="${proof.image}" alt="Payment screenshot">`;
+    const download = modal.querySelector("[data-download]"); download.href = proof.image; download.classList.remove("hidden");
+  } catch (error) { console.error(error); modal.querySelector(".proof-view").innerHTML = `<p class="empty small">Couldn't load the screenshot. Try again.</p>`; }
+}
+/* Deletes screenshots older than the retention period, at most once a day. */
+async function cleanupProofs() {
+  try {
+    const last = Number((await db.ref("meta/lastProofCleanup").once("value")).val() || 0);
+    if (Date.now() - last < 24 * HOUR_MS) return;
+    const cutoff = Date.now() - BOOKING_RULES.proofRetentionDays * 24 * HOUR_MS;
+    const old = (await db.ref("paymentProofs").orderByChild("createdAt").endAt(cutoff).limitToFirst(300).once("value")).val() || {};
+    const updates = { "meta/lastProofCleanup": Date.now() };
+    Object.keys(old).forEach(id => updates[`paymentProofs/${id}`] = null);
+    await db.ref().update(updates);
+  } catch (error) { console.warn("Screenshot cleanup skipped", error); }
 }
 
 /* ---------- actions ---------- */
@@ -390,7 +418,8 @@ async function renderResolve() {
   }
   $("#resolve").classList.toggle("hidden", !items.length);
   $("#resolve-count").textContent = items.length ? `${items.length} to sort out` : "";
-  $("#resolve-list").innerHTML = items.map(({ rid, entry, why }) => `<article class="resolve-row"><div><b>${safe(entry.name || "Customer")} · ${peso(entry.amount)}</b><span>${safe(asDate(entry.date).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" }))} · ${safe(entry.court)} · ${safe(String(entry.startTime || "").replace(":00", ""))} · ${safe(methodName(entry.method))} ref <span class="mono">${safe(entry.reference)}</span></span><small>${safe(why)}</small></div><div class="row-actions"><button type="button" class="btn primary small" data-resolve="refunded" data-rid="${safe(rid)}">Refund sent</button><button type="button" class="btn ghost small" data-resolve="dismissed" data-rid="${safe(rid)}">No refund needed</button></div></article>`).join("");
+  $("#resolve-list").innerHTML = items.map(({ rid, entry, why }) => `<article class="resolve-row"><div><b>${safe(entry.name || "Customer")} · ${peso(entry.amount)}</b><span>${safe(asDate(entry.date).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" }))} · ${safe(entry.court)} · ${safe(String(entry.startTime || "").replace(":00", ""))} · ${safe(methodName(entry.method))} ref <span class="mono">${safe(entry.reference)}</span></span><small>${safe(why)}</small></div><div class="row-actions">${entry.hasProof ? `<button type="button" class="btn ghost small" data-proof="${safe(rid)}">Screenshot</button>` : ""}<button type="button" class="btn primary small" data-resolve="refunded" data-rid="${safe(rid)}">Refund sent</button><button type="button" class="btn ghost small" data-resolve="dismissed" data-rid="${safe(rid)}">No refund needed</button></div></article>`).join("");
+  $("#resolve-list").querySelectorAll("[data-proof]").forEach(btn => btn.onclick = () => { const e = paymentLog[btn.dataset.proof]; viewProof(btn.dataset.proof, { ownerName: e.name, paymentReference: e.reference, totalPrice: e.amount }); });
   $("#resolve-list").querySelectorAll("[data-resolve]").forEach(btn => btn.onclick = async () => {
     btn.disabled = true;
     try { await db.ref(`paymentLog/${btn.dataset.rid}`).update({ state: btn.dataset.resolve, resolvedAt: Date.now(), resolvedBy: auth.currentUser.email }); toast(btn.dataset.resolve === "refunded" ? "Marked as refunded" : "Dismissed"); }
@@ -414,6 +443,7 @@ function start() {
   db.ref(".info/connected").on("value", snap => { const live = $("#live"), on = snap.val() === true; live.dataset.state = on ? "live" : "offline"; live.querySelector("span").textContent = on ? "Live" : "Offline"; });
   setDate(localDate());
   checkMigration();
+  cleanupProofs();
   db.ref("paymentLog").on("value", snap => { paymentLog = snap.val() || {}; renderResolve().catch(console.error); }, () => {});
   setInterval(() => renderResolve().catch(console.error), 120000);
   $("#run-migration").onclick = event => runMigration(event.currentTarget);
