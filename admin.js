@@ -28,9 +28,12 @@ function hourlyRate(time, value = dateInput.value) { const hour = SLOTS.indexOf(
 const rangeFrom = (start, hours) => { const i = SLOTS.indexOf(start); return i < 0 ? [] : SLOTS.slice(i, i + hours); };
 const endOf = (start, hours) => SLOTS[(SLOTS.indexOf(start) + Number(hours || 1)) % 24];
 const isExpired = b => b.status === "pending_payment" && !b.proofSubmittedAt && Number(b.holdExpiresAt) <= Date.now();
-const occupies = b => b && b.status !== "cancelled" && !isExpired(b);
-const statusName = b => b.status === "pending_payment" ? (b.proofSubmittedAt ? "Payment to review" : isExpired(b) ? "Expired" : "Awaiting payment") : ({ confirmed: "Confirmed", checked_in: "Checked in", cancelled: "Cancelled", no_show: "No show" }[b.status] || b.status);
-const statusClass = b => b.status === "pending_payment" ? (b.proofSubmittedAt ? "review" : "pending") : b.status;
+/* occupies(), expectedPrice() and reviewEndsAt() come from site-config.js, shared with the customer pages. */
+const reviewTimedOut = b => b.status === "pending_payment" && !!b.proofSubmittedAt && reviewEndsAt(b) <= Date.now();
+const priceMismatch = b => !b.staffCreated && Number(b.totalPrice) !== expectedPrice(b.date, b.startTime || b.time, b.durationHours || 1);
+const clockTime = ms => new Date(ms).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+const statusName = b => b.status === "pending_payment" ? (b.proofSubmittedAt ? (reviewTimedOut(b) ? "Review timed out" : "Payment to review") : isExpired(b) ? "Expired" : "Awaiting payment") : ({ confirmed: "Confirmed", checked_in: "Checked in", cancelled: "Cancelled", no_show: "No show" }[b.status] || b.status);
+const statusClass = b => b.status === "pending_payment" ? (b.proofSubmittedAt ? (reviewTimedOut(b) ? "timeout" : "review") : "pending") : b.status;
 function currentHourFraction() { const now = new Date(); return now.getHours() + now.getMinutes() / 60; }
 function pastState(hour) { const today = localDate(); if (dateInput.value < today) return true; if (dateInput.value > today) return false; return hour + 1 <= currentHourFraction(); }
 
@@ -43,7 +46,6 @@ function hourRows() {
 /* One entry per reservation (the primary row). */
 function reservations() { return hourRows().filter(b => b.isPrimary !== false); }
 
-const availabilityRow = b => ({ status: b.status, ownerUid: b.ownerUid, holdExpiresAt: b.holdExpiresAt || 0, ...(b.proofSubmittedAt ? { proofSubmittedAt: b.proofSubmittedAt } : {}) });
 
 /* ---------- one-time copy into the private layout ---------- */
 async function checkMigration() {
@@ -64,7 +66,7 @@ async function runMigration(button) {
       });
       Object.values(byReservation).forEach(({ row, keys }) => {
         if (!row || !row.ownerUid || row.ownerUid === "staff") return;
-        updates[`userBookings/${row.ownerUid}/${row.reservationId}`] = { reservationId: row.reservationId, court: row.court, courtKey: ck, timeKeys: keys.sort((a, b) => SLOTS.findIndex(t => slotKey(t) === a) - SLOTS.findIndex(t => slotKey(t) === b)), date, startTime: row.startTime || row.time, durationHours: row.durationHours || keys.length, totalPrice: row.totalPrice || 0, status: row.status, paymentStatus: row.paymentStatus || "unpaid", holdExpiresAt: row.holdExpiresAt || 0, note: row.note || "", createdAt: row.createdAt || "", ...(row.paymentReference ? { paymentReference: row.paymentReference } : {}), ...(row.paymentMethod ? { paymentMethod: row.paymentMethod } : {}), ...(row.proofSubmittedAt ? { proofSubmittedAt: row.proofSubmittedAt } : {}), ...(row.cancellationReason ? { cancellationReason: row.cancellationReason } : {}) };
+        updates[`userBookings/${row.ownerUid}/${row.reservationId}`] = { reservationId: row.reservationId, court: row.court, courtKey: ck, timeKeys: keys.sort((a, b) => SLOTS.findIndex(t => slotKey(t) === a) - SLOTS.findIndex(t => slotKey(t) === b)), date, startTime: row.startTime || row.time, durationHours: row.durationHours || keys.length, totalPrice: row.totalPrice || 0, status: row.status, paymentStatus: row.paymentStatus || "unpaid", holdExpiresAt: row.holdExpiresAt || 0, note: row.note || "", createdAt: row.createdAt || "", contactPhone: row.contactPhone || "", ...(row.paymentReference ? { paymentReference: row.paymentReference } : {}), ...(row.paymentMethod ? { paymentMethod: row.paymentMethod } : {}), ...(row.proofSubmittedAt ? { proofSubmittedAt: row.proofSubmittedAt } : {}), ...(row.cancellationReason ? { cancellationReason: row.cancellationReason } : {}) };
         count++;
       });
     }));
@@ -125,7 +127,7 @@ function subscribe() {
 
 /* ---------- metrics ---------- */
 function renderMetrics(list) {
-  const live = list.filter(b => b.status !== "cancelled" && !isExpired(b));
+  const live = list.filter(b => b.status !== "cancelled" && !isExpired(b) && !reviewTimedOut(b));
   const paid = live.filter(b => b.paymentStatus === "paid");
   const awaiting = live.filter(b => b.status === "pending_payment");
   const review = awaiting.filter(b => b.proofSubmittedAt);
@@ -212,6 +214,9 @@ function rowHtml(b, all) {
       <div class="row-meta">${b.contactPhone ? `<a href="tel:${safe(String(b.contactPhone).replace(/[^\d+]/g, ""))}">${safe(b.contactPhone)}</a>` : "No contact"}${b.paymentReference ? `${b.paymentMethod ? ` · ${safe(methodName(b.paymentMethod))}` : ""} · Ref <span class="mono">${safe(b.paymentReference)}</span>` : ""}${b.staffCreated ? " · Walk-in" : ""}</div>
       ${b.note ? `<div class="row-note">${safe(b.note)}</div>` : ""}
       ${duplicate ? `<span class="badge danger">Reference used on another booking</span>` : ""}
+      ${priceMismatch(b) && b.status !== "cancelled" ? `<span class="badge danger">Amount doesn't match rates · should be ${peso(expectedPrice(b.date, b.startTime || b.time, b.durationHours || 1))}</span>` : ""}
+      ${pending && b.proofSubmittedAt && !reviewTimedOut(b) ? `<div class="row-note">Slot auto-releases at ${clockTime(reviewEndsAt(b))} if not confirmed</div>` : ""}
+      ${reviewTimedOut(b) ? `<span class="badge danger">Not reviewed in time · slot released</span>` : ""}
       ${b.cancellationReason && b.status === "cancelled" ? `<div class="row-note">Reason: ${safe(b.cancellationReason)}</div>` : ""}
     </div>
     ${b.proofUrl ? `<a class="proof-thumb" href="${safe(b.proofUrl)}" target="_blank" rel="noopener" title="Open payment screenshot"><img src="${safe(b.proofUrl)}" alt="Payment screenshot" loading="lazy"></a>` : `<span class="proof-thumb empty" aria-hidden="true"></span>`}
@@ -223,7 +228,7 @@ function renderList(list) {
   const filter = $("#filter-status").value;
   const visible = list.filter(b => !isExpired(b) && (filter === "all" || b.status === filter)).sort((a, b) => SLOTS.indexOf(a.startTime || a.time) - SLOTS.indexOf(b.startTime || b.time));
   const dup = b => b.paymentReference && list.some(x => x.reservationId !== b.reservationId && x.paymentReference === b.paymentReference);
-  const needs = visible.filter(b => (b.status === "pending_payment" && b.proofSubmittedAt) || (dup(b) && b.status !== "cancelled"));
+  const needs = visible.filter(b => (b.status === "pending_payment" && b.proofSubmittedAt) || (b.status !== "cancelled" && (dup(b) || priceMismatch(b))));
   const rest = visible.filter(b => !needs.includes(b));
   const expiredCount = list.filter(isExpired).length;
   $("#booking-count").textContent = `${visible.length} booking${visible.length === 1 ? "" : "s"}${expiredCount ? ` · ${expiredCount} expired hold${expiredCount === 1 ? "" : "s"} hidden` : ""}`;
@@ -250,12 +255,22 @@ async function updateReservation(booking, fields) {
     const mine = `userBookings/${booking.ownerUid}/${booking.reservationId}`;
     ["status", "paymentStatus", "paymentMethod", "paidAt", "cancellationReason"].forEach(f => { if (f in fields) updates[`${mine}/${f}`] = fields[f]; });
   }
+  if (booking.ownerUid && booking.ownerUid !== "staff" && booking.holdSlot !== undefined && "status" in fields && fields.status !== "pending_payment") {
+    const ticket = (await db.ref(`holdSlots/${booking.ownerUid}/${booking.holdSlot}`).once("value")).val();
+    if (ticket && ticket.rid === booking.reservationId) updates[`holdSlots/${booking.ownerUid}/${booking.holdSlot}`] = null;
+  }
+  const log = (await db.ref(`paymentLog/${booking.reservationId}`).once("value")).val();
+  if (log) {
+    if (fields.paymentStatus === "paid") updates[`paymentLog/${booking.reservationId}/state`] = "paid";
+    else if (fields.status === "cancelled" && booking.status === "pending_payment") updates[`paymentLog/${booking.reservationId}/state`] = "rejected";
+  }
   await db.ref().update(updates);
 }
 async function markPaid(b) {
   if (!b) return;
-  const details = `<dl class="modal-details"><dt>Amount</dt><dd>${peso(b.totalPrice)}</dd><dt>Method</dt><dd>${safe(methodName(b.paymentMethod) || "Not given")}</dd><dt>Reference</dt><dd class="mono">${safe(b.paymentReference || "Not submitted")}</dd><dt>Customer</dt><dd>${safe(b.ownerName || "Customer")}</dd></dl>`;
-  const { ok } = await staffModal({ title: "Mark as paid?", message: "Only confirm once you've seen this payment in your own GCash or Maya app.", details, confirm: `Mark ${peso(b.totalPrice)} paid` });
+  const expected = expectedPrice(b.date, b.startTime || b.time, b.durationHours || 1), wrong = priceMismatch(b);
+  const details = `${wrong ? `<p class="modal-warning">This booking says ${peso(b.totalPrice)}, but your rates for this time come to ${peso(expected)}. Check you received ${peso(expected)} before confirming.</p>` : ""}${reviewTimedOut(b) ? `<p class="modal-warning">This review timed out and the slot was released. Confirming takes it back, if nobody else has booked it.</p>` : ""}<dl class="modal-details"><dt>Amount</dt><dd>${peso(b.totalPrice)}</dd>${wrong ? `<dt>Rates say</dt><dd>${peso(expected)}</dd>` : ""}<dt>Method</dt><dd>${safe(methodName(b.paymentMethod) || "Not given")}</dd><dt>Reference</dt><dd class="mono">${safe(b.paymentReference || "Not submitted")}</dd><dt>Customer</dt><dd>${safe(b.ownerName || "Customer")}</dd></dl>`;
+  const { ok } = await staffModal({ title: "Mark as paid?", message: "Only confirm once you've seen this payment in your own GCash or Maya app.", details, confirm: wrong ? "Mark paid anyway" : `Mark ${peso(b.totalPrice)} paid`, tone: wrong ? "danger" : "primary" });
   if (!ok) return;
   try { await updateReservation(b, { status: "confirmed", paymentStatus: "paid", paidAt: Date.now(), verifiedBy: auth.currentUser.email }); toast(`Marked as paid · ${b.ownerName || "Customer"}`); }
   catch (error) { console.error(error); toast("Couldn't save. Try again.", "error"); }
@@ -362,6 +377,27 @@ async function removeBlock(ck, start, hours) {
   try { await db.ref().update(updates); toast("Block removed"); } catch (error) { console.error(error); toast("Couldn't remove the block. Try again.", "error"); }
 }
 
+/* ---------- payments to resolve (money received for a slot the customer no longer has) ---------- */
+let paymentLog = {};
+async function renderResolve() {
+  const since = localDate(-14), items = [];
+  for (const [rid, entry] of Object.entries(paymentLog || {})) {
+    if (!["submitted", "paid", "slot_lost"].includes(entry.state) || entry.date < since) continue;
+    if (entry.state === "slot_lost") { items.push({ rid, entry, why: "Paid after their hold ran out and the slot was taken" }); continue; }
+    const row = (await db.ref(`bookings/${entry.date}/${entry.courtKey}/${entry.first}`).once("value")).val();
+    if (!row || row.reservationId !== rid) items.push({ rid, entry, why: "Slot was released before the payment was reviewed, and someone else booked it" });
+    else if (row.status === "cancelled") items.push({ rid, entry, why: entry.state === "paid" ? "Cancelled after paying" : "Cancelled with a payment submitted" });
+  }
+  $("#resolve").classList.toggle("hidden", !items.length);
+  $("#resolve-count").textContent = items.length ? `${items.length} to sort out` : "";
+  $("#resolve-list").innerHTML = items.map(({ rid, entry, why }) => `<article class="resolve-row"><div><b>${safe(entry.name || "Customer")} · ${peso(entry.amount)}</b><span>${safe(asDate(entry.date).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" }))} · ${safe(entry.court)} · ${safe(String(entry.startTime || "").replace(":00", ""))} · ${safe(methodName(entry.method))} ref <span class="mono">${safe(entry.reference)}</span></span><small>${safe(why)}</small></div><div class="row-actions"><button type="button" class="btn primary small" data-resolve="refunded" data-rid="${safe(rid)}">Refund sent</button><button type="button" class="btn ghost small" data-resolve="dismissed" data-rid="${safe(rid)}">No refund needed</button></div></article>`).join("");
+  $("#resolve-list").querySelectorAll("[data-resolve]").forEach(btn => btn.onclick = async () => {
+    btn.disabled = true;
+    try { await db.ref(`paymentLog/${btn.dataset.rid}`).update({ state: btn.dataset.resolve, resolvedAt: Date.now(), resolvedBy: auth.currentUser.email }); toast(btn.dataset.resolve === "refunded" ? "Marked as refunded" : "Dismissed"); }
+    catch (error) { console.error(error); btn.disabled = false; toast("Couldn't save. Try again.", "error"); }
+  });
+}
+
 /* ---------- render all ---------- */
 function render() {
   const list = reservations();
@@ -378,6 +414,8 @@ function start() {
   db.ref(".info/connected").on("value", snap => { const live = $("#live"), on = snap.val() === true; live.dataset.state = on ? "live" : "offline"; live.querySelector("span").textContent = on ? "Live" : "Offline"; });
   setDate(localDate());
   checkMigration();
+  db.ref("paymentLog").on("value", snap => { paymentLog = snap.val() || {}; renderResolve().catch(console.error); }, () => {});
+  setInterval(() => renderResolve().catch(console.error), 120000);
   $("#run-migration").onclick = event => runMigration(event.currentTarget);
   if (location.hash === "#tools") $("#tools").scrollIntoView();
   setInterval(() => { if (dateInput.value === localDate()) render(); }, 60000);

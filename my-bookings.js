@@ -19,16 +19,20 @@ function timeRange(start, hours) { const from = hourOf(start), to = from + Numbe
 function startsAt(b) { return new Date(`${b.date}T${String(Math.max(0, hourOf(b.startTime))).padStart(2, "0")}:00:00+08:00`); }
 function endsAt(b) { return new Date(startsAt(b).getTime() + Number(b.durationHours || 1) * 3600000); }
 const isExpired = b => b.status === "pending_payment" && !b.proofSubmittedAt && Number(b.holdExpiresAt) <= Date.now();
-const isUpcoming = b => !["cancelled", "no_show"].includes(b.status) && !isExpired(b) && endsAt(b) > new Date();
+const reviewTimedOut = b => b.status === "pending_payment" && !!b.proofSubmittedAt && reviewEndsAt(b) <= Date.now();
+const isUpcoming = b => !["cancelled", "no_show"].includes(b.status) && !b.slotLost && !isExpired(b) && !reviewTimedOut(b) && endsAt(b) > new Date();
+const clockTime = ms => new Date(ms).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
 function pill(b, upcoming) {
   if (b.status === "cancelled") return ["cancelled", "Cancelled"];
   if (b.status === "no_show") return ["muted", "No show"];
+  if (b.slotLost) return ["cancelled", "Refund pending"];
+  if (reviewTimedOut(b)) return ["muted", "Not confirmed in time"];
   if (isExpired(b)) return ["muted", "Hold expired"];
   if (b.status === "pending_payment") return b.proofSubmittedAt ? ["review", "Payment under review"] : ["pending", "Awaiting payment"];
   if (!upcoming) return ["muted", "Played"];
   return b.status === "checked_in" ? ["checked", "Checked in"] : ["confirmed", "Confirmed"];
 }
-function holdText(expires) { const s = Math.max(0, Math.ceil((Number(expires) - Date.now()) / 1000)); return `Held for you · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+function holdText(expires) { const ms = Number(expires) - Date.now(), s = Math.max(0, Math.ceil(ms / 1000)), left = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; return ms <= BOOKING_RULES.lastCallMs ? `Time's almost up · ${left} · don't send money now` : `Held for you · ${left}`; }
 function initials(text) { const words = String(text).split("@")[0].trim().split(/[\s._-]+/).filter(Boolean); const picked = words.length > 1 ? [words[0], words[words.length - 1]] : [words[0] || "A"]; return picked.map(w => Array.from(w)[0]).join("").toUpperCase(); }
 
 /* ---------- toast ---------- */
@@ -43,7 +47,7 @@ function upcomingCard(b) {
   return `<article class="bk" data-id="${safe(b.reservationId)}">
     <div class="bk-top"><div><h3>${dayLabel(b.date)}</h3><p class="bk-sub">${timeRange(b.startTime, b.durationHours)} · ${safe(b.court)} · ${peso(b.totalPrice)}</p></div><span class="pill ${tone}">${label}</span></div>
     ${canPay ? `<p class="hold-pill" data-expires="${Number(b.holdExpiresAt)}">${holdText(b.holdExpiresAt)}</p>` : ""}
-    ${pending && b.proofSubmittedAt ? `<p class="bk-info">Payment sent. Staff will confirm it shortly.</p>` : ""}
+    ${pending && b.proofSubmittedAt ? `<p class="bk-info">Payment sent. Staff will confirm by ${clockTime(reviewEndsAt(b))}.</p>` : ""}
     ${b.paymentReference ? `<p class="bk-meta">${safe(methodName(b.paymentMethod))} ref <span class="mono">${safe(b.paymentReference)}</span>${paid ? " · Paid" : ""}</p>` : paid ? `<p class="bk-meta">Paid${b.paymentMethod ? ` · ${safe(methodName(b.paymentMethod))}` : ""}</p>` : ""}
     ${b.note ? `<p class="bk-meta">Note: ${safe(b.note)}</p>` : ""}
     <div class="bk-actions">
@@ -60,8 +64,10 @@ function pastCard(b) {
   return `<article class="bk past" data-id="${safe(b.reservationId)}">
     <div class="bk-top"><div><h3>${dayLabel(b.date)}</h3><p class="bk-sub">${timeRange(b.startTime, b.durationHours)} · ${safe(b.court)} · ${peso(b.totalPrice)}</p></div><span class="pill ${tone}">${label}</span></div>
     ${refund ? `<p class="bk-info">Refund pending. Staff will contact you.</p>` : ""}
+    ${b.slotLost ? `<p class="bk-info">Your hold ran out and someone else booked this time before your payment came through. Staff will refund ${peso(b.totalPrice)}.</p>` : ""}
+    ${!b.slotLost && reviewTimedOut(b) ? `<p class="bk-info">Staff couldn't confirm your payment in time, so the slot was released. If you paid, staff will contact you about a refund.</p>` : ""}
     ${b.cancellationReason && b.status === "cancelled" ? `<p class="bk-meta">Reason: ${safe(b.cancellationReason)}</p>` : ""}
-    ${isExpired(b) || b.status === "cancelled" ? `<div class="bk-actions"><a class="bk-link" href="./index.html#book">Book again</a></div>` : ""}
+    ${isExpired(b) && !b.slotLost && startsAt(b) > new Date() ? `<div class="bk-actions"><button type="button" class="book-btn bk-pay" data-act="rehold">Hold again</button><a class="bk-link" href="./index.html#book">Pick another time</a></div>` : isExpired(b) || b.status === "cancelled" || b.slotLost || reviewTimedOut(b) ? `<div class="bk-actions"><a class="bk-link" href="./index.html#book">Book again</a></div>` : ""}
   </article>`;
 }
 function render() {
@@ -76,6 +82,7 @@ function render() {
     if (el.dataset.act === "pay") openPayment(b);
     if (el.dataset.act === "cancel") cancelTap(b);
     if (el.dataset.act === "ics") downloadIcs(b);
+    if (el.dataset.act === "rehold") holdAgain(b, el);
   });
 }
 /* Only the countdown text changes each second; the list is rebuilt when a hold actually runs out. */
@@ -86,6 +93,7 @@ setInterval(() => {
     if (left <= 0) expiredNow = true;
     el.textContent = holdText(el.dataset.expires);
     el.classList.toggle("warning", left < 300000);
+    el.classList.toggle("last-call", left <= BOOKING_RULES.lastCallMs);
   });
   if (expiredNow) render();
 }, 1000);
@@ -98,8 +106,27 @@ async function cancelTap(b) {
   const updates = {}, ck = b.courtKey || b.court.toLowerCase().replace(" ", "-");
   slotKeysFor(b).forEach(tk => { updates[`bookings/${b.date}/${ck}/${tk}/status`] = "cancelled"; updates[`availability/${b.date}/${ck}/${tk}/status`] = "cancelled"; });
   updates[`userBookings/${user.uid}/${b.reservationId}/status`] = "cancelled";
-  try { await db.ref().update(updates); toast("Booking cancelled"); }
+  try {
+    /* Free this booking's hold ticket, but only if the ticket still belongs to it. */
+    if (b.holdSlot !== undefined && b.holdSlot !== null && !b.proofSubmittedAt) {
+      const ticket = (await db.ref(`holdSlots/${user.uid}/${b.holdSlot}`).once("value")).val();
+      if (ticket && ticket.rid === b.reservationId) updates[`holdSlots/${user.uid}/${b.holdSlot}`] = null;
+    }
+    await db.ref().update(updates); toast("Booking cancelled");
+  }
   catch (error) { console.error(error); toast("Couldn't cancel. Try again.", "error"); render(); }
+}
+
+/* ---------- hold again after a hold runs out ---------- */
+async function holdAgain(b, button) {
+  button.disabled = true; button.textContent = "Checking…";
+  try {
+    const result = await reholdSafely(db, user.uid, b, b.courtKey || b.court.toLowerCase().replace(" ", "-"), slotKeysFor(b), user.displayName || user.email);
+    if (result.outcome === "reheld" || result.outcome === "held") toast("Held again for 30 minutes");
+    else if (result.outcome === "noHold") toast("You already have 2 unpaid holds. Pay for or cancel one first.", "error");
+    else toast("Someone else booked this time. Pick another slot.", "error");
+  } catch (error) { console.error(error); toast("Couldn't hold it again. Try again.", "error"); }
+  finally { button.disabled = false; button.textContent = "Hold again"; }
 }
 
 /* ---------- calendar file ---------- */

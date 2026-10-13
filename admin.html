@@ -99,6 +99,12 @@
         </aside>
       </div>
 
+      <section class="card resolve-card hidden" id="resolve">
+        <div class="card-head"><h2>Payments to resolve</h2><span id="resolve-count" class="muted"></span></div>
+        <p class="hint">Customers who sent money but no longer have the slot. Refund them in GCash or Maya, then mark it here.</p>
+        <div id="resolve-list"></div>
+      </section>
+
       <section class="card list-card">
         <div class="card-head"><h2>Reservations</h2><span id="booking-count" class="muted"></span></div>
         <p class="hint">Check the reference and amount in your own GCash or Maya app before marking a booking as paid.</p>
@@ -113,6 +119,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="./site-config.js"></script>
   <script src="./admin.js"></script>
 </body>
 </html>

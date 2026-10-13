@@ -11,6 +11,7 @@ function openPayment(b) {
   <div class="payment-modal-body">
     <section class="payment-summary"><div class="summary-row"><span>COURT</span><strong>${safe(b.court)}</strong></div><div class="summary-row"><span>DATE</span><strong>${dayLabel(b.date)}</strong></div><div class="summary-row"><span>TIME</span><strong>${timeRange(b.startTime, b.durationHours)}</strong></div></section>
     <section class="payment-due"><span>AMOUNT TO PAY</span><strong class="payment-amount">${peso(b.totalPrice)}</strong>${!b.proofSubmittedAt ? `<p class="payment-hold hold-pill" data-expires="${Number(b.holdExpiresAt)}">${holdText(b.holdExpiresAt)}</p>` : ""}</section>
+    <div class="payment-alert hidden" id="pay-alert" role="alert"></div>
     <div class="payment-tabs" role="tablist" aria-label="Payment method">${PAYMENT.methods.map(m => `<button type="button" role="tab" data-method="${m.id}" class="${m.id === methodId ? "active" : ""}" aria-selected="${m.id === methodId}">${m.label}</button>`).join("")}</div>
     <section class="payment-qr-card" id="method-details"></section>
     <p class="payment-helper">Pay the exact amount, then enter your reference number below.</p>
@@ -42,6 +43,7 @@ function openPayment(b) {
   };
   submit.onclick = () => submitPayment(b);
   dialog.showModal();
+  watchHold(b);
 }
 async function compressProof(file) {
   const image = await createImageBitmap(file), scale = Math.min(1, 1280 / image.width), canvas = document.createElement("canvas");
@@ -49,11 +51,43 @@ async function compressProof(file) {
   canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
   return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .82));
 }
+/* ---------- late-payment guard ---------- */
+let holdWatch = null;
+function setPayAlert(kind, html, b) {
+  const alert = $("#pay-alert"), body = document.querySelector("#booking-dialog .payment-modal-body"); if (!alert) return;
+  alert.className = `payment-alert ${kind || "hidden"}`; alert.innerHTML = html || "";
+  body.classList.toggle("payment-paused", kind === "expired" || kind === "taken");
+  const again = alert.querySelector("[data-hold-again]"); if (again) again.onclick = () => holdAgainInDialog(b, again);
+}
+function watchHold(b) {
+  clearInterval(holdWatch); setPayAlert("", "", b);
+  if (b.proofSubmittedAt) return;
+  const tick = () => {
+    if (!$("#booking-dialog").open) { clearInterval(holdWatch); return; }
+    const left = Number(b.holdExpiresAt) - Date.now(), kind = $("#pay-alert").classList;
+    if (left <= 0 && !kind.contains("expired") && !kind.contains("taken")) setPayAlert("expired", "<strong>Your hold ran out.</strong> Don't send money yet. Hold the slot again first. If you've already paid, enter your reference below. <button type=\"button\" class=\"alert-btn\" data-hold-again>Hold again</button>", b);
+    else if (left > 0 && left <= BOOKING_RULES.lastCallMs && !kind.contains("last-call")) setPayAlert("last-call", "<strong>Time's almost up.</strong> Don't send money now. When the timer ends, tap Hold again for a fresh 30 minutes.", b);
+  };
+  tick(); holdWatch = setInterval(tick, 1000);
+}
+async function holdAgainInDialog(b, button) {
+  button.disabled = true; button.textContent = "Checking…";
+  try {
+    const result = await reholdSafely(db, user.uid, b, b.courtKey || b.court.toLowerCase().replace(" ", "-"), slotKeysFor(b), user.displayName || user.email);
+    if (result.outcome === "reheld" || result.outcome === "held") {
+      if (result.holdExpiresAt) Object.assign(b, { holdExpiresAt: result.holdExpiresAt, holdSlot: result.holdSlot });
+      const pill = document.querySelector("#booking-dialog .hold-pill"); if (pill) pill.dataset.expires = b.holdExpiresAt;
+      watchHold(b);
+    } else if (result.outcome === "noHold") setPayAlert("taken", "<strong>You have 2 other unpaid holds.</strong> Pay for or cancel one, then try again.", b);
+    else setPayAlert("taken", "<strong>Someone else booked this slot.</strong> Don't send money. Close this and pick another time.", b);
+  } catch (error) { console.error(error); button.disabled = false; button.textContent = "Hold again"; }
+}
+
 async function submitPayment(b) {
   const reference = $("#pay-reference").value.trim(), error = $("#pay-error"), button = $("#pay-submit");
   error.classList.add("hidden");
   if (reference.length < 6) { error.textContent = "Enter a reference with at least 6 characters."; error.classList.remove("hidden"); return; }
-  button.disabled = true; button.textContent = "Sending…";
+  button.disabled = true; button.textContent = "Checking your slot…";
   try {
     let proofUrl = "";
     const file = $("#pay-proof").files[0];
@@ -61,16 +95,15 @@ async function submitPayment(b) {
       try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${user.uid}/${b.reservationId}.jpg`).put(blob, { contentType: "image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); }
       catch (uploadError) { console.warn(uploadError); toast("Screenshot didn't upload. Your reference was still sent.", "error"); }
     }
-    const now = Date.now(), ck = b.courtKey || b.court.toLowerCase().replace(" ", "-"), updates = {};
-    slotKeysFor(b).forEach(tk => {
-      const base = `bookings/${b.date}/${ck}/${tk}`;
-      Object.assign(updates, { [`${base}/paymentReference`]: reference, [`${base}/paymentMethod`]: methodId, [`${base}/proofSubmittedAt`]: now, [`availability/${b.date}/${ck}/${tk}/proofSubmittedAt`]: now });
-      if (proofUrl) updates[`${base}/proofUrl`] = proofUrl;
-    });
-    const mine = `userBookings/${user.uid}/${b.reservationId}`;
-    Object.assign(updates, { [`${mine}/paymentReference`]: reference, [`${mine}/paymentMethod`]: methodId, [`${mine}/proofSubmittedAt`]: now });
-    await db.ref().update(updates);
-    $("#pay-done").classList.remove("hidden");
+    const ck = b.courtKey || b.court.toLowerCase().replace(" ", "-");
+    const result = await submitPaymentSafely(db, user.uid, b, ck, slotKeysFor(b), { reference, method: methodId, proofUrl, name: user.displayName || user.email });
+    if (result.outcome === "noHold") { error.textContent = "Your hold ran out and you already have 2 other unpaid holds. Cancel one, then submit again."; error.classList.remove("hidden"); return; }
+    if (result.outcome === "cancelled") { error.textContent = "This booking was cancelled, so we can't take a payment for it."; error.classList.remove("hidden"); return; }
+    clearInterval(holdWatch); setPayAlert("", "", b);
+    const done = $("#pay-done");
+    if (result.outcome === "lost") { done.querySelector("strong").textContent = "Slot was taken"; done.querySelector("p").textContent = `Your hold ran out and someone else booked this time before your payment came through. We've saved your reference, and staff will refund ${peso(b.totalPrice)}.`; }
+    else { done.querySelector("strong").textContent = "Payment sent"; done.querySelector("p").textContent = `Staff will check it and confirm by ${new Date(result.reviewExpiresAt).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}.`; }
+    done.classList.remove("hidden");
     document.querySelectorAll("#booking-dialog .payment-summary,#booking-dialog .payment-due,#booking-dialog .payment-tabs,#booking-dialog .payment-qr-card,#booking-dialog .payment-helper,#booking-dialog .payment-field").forEach(el => el.classList.add("hidden"));
     button.classList.add("hidden");
   } catch (exception) {
@@ -78,4 +111,3 @@ async function submitPayment(b) {
     error.textContent = "Couldn't send your payment details. Check your connection and try again."; error.classList.remove("hidden");
   } finally { button.disabled = false; button.textContent = "Submit payment"; }
 }
-

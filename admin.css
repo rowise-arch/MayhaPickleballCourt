@@ -218,3 +218,13 @@ button.cal-slot:focus-visible:after{opacity:1}
 @media(max-width:700px){.brand{font-size:14px;letter-spacing:.4px}.brand-name b{display:block}}
 .brand-name,.brand-name b,.bar-right .ghost{white-space:nowrap}
 @media(max-width:380px){.bar{padding:0 14px}.brand{font-size:13px;gap:6px}.live span{display:none}.bar-right{gap:10px}}
+
+/* Payment safety */
+.status.timeout,.cal-event.timeout{background:#e5eaef;color:#4c5a67}
+.modal-warning{margin:0 0 12px!important;padding:10px 12px;border-radius:var(--r-control);background:#fff0eb;color:#a33b23!important;font-size:13px;font-weight:600}
+.resolve-card{padding:16px;margin-bottom:16px;border-color:#f3b59a;background:#fffaf7}
+.resolve-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 0;border-top:1px solid #f6d9cc}
+.resolve-row b{display:block}
+.resolve-row span{display:block;font-size:13px;color:var(--muted)}
+.resolve-row small{display:block;margin-top:2px;font-size:12px;font-weight:600;color:#a33b23}
+@media(max-width:700px){.resolve-row{flex-direction:column;align-items:flex-start}}
