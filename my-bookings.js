@@ -105,7 +105,7 @@ async function cancelTap(b) {
 /* ---------- calendar file ---------- */
 function downloadIcs(b) {
   const stamp = date => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Mayha Courts//Booking//EN", "BEGIN:VEVENT", `UID:${b.reservationId}@mayha-courts`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(startsAt(b))}`, `DTEND:${stamp(endsAt(b))}`, `SUMMARY:Pickleball · ${b.court}`, `LOCATION:${(SITE.address || SITE.mapsQuery).replace(/,/g, "\\,")}`, `DESCRIPTION:Mayha Courts booking · ${peso(b.totalPrice).replace("₱", "PHP ")}`, "END:VEVENT", "END:VCALENDAR"];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Mayha Square Pickleball Court//Booking//EN", "BEGIN:VEVENT", `UID:${b.reservationId}@mayha-courts`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(startsAt(b))}`, `DTEND:${stamp(endsAt(b))}`, `SUMMARY:Pickleball · ${b.court}`, `LOCATION:${(SITE.address || SITE.mapsQuery).replace(/,/g, "\\,")}`, `DESCRIPTION:Mayha Square Pickleball Court booking · ${peso(b.totalPrice).replace("₱", "PHP ")}`, "END:VEVENT", "END:VCALENDAR"];
   const url = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/calendar" }));
   const link = Object.assign(document.createElement("a"), { href: url, download: `mayha-${b.court.toLowerCase().replace(" ", "-")}-${b.date}.ics` });
   document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);

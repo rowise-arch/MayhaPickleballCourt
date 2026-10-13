@@ -1,4 +1,4 @@
-/* Mayha Courts staff dashboard: calendar, walk-ins, blocks and payment review on one page. */
+/* Mayha Square Pickleball Court staff dashboard: calendar, walk-ins, blocks and payment review on one page. */
 const config = { apiKey: "AIzaSyAVboExr93oDx_ClUFPp2fmcMGvOTTNbRo", authDomain: "mayha-courts.firebaseapp.com", databaseURL: "https://mayha-courts-default-rtdb.firebaseio.com", projectId: "mayha-courts", storageBucket: "mayha-courts.firebasestorage.app", messagingSenderId: "697040217308", appId: "1:697040217308:web:92d797a44fb71e97474019" };
 const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(config), auth = app.auth(), db = app.database();
 

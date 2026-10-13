@@ -129,7 +129,7 @@ function setAuthMode(register) {
   document.querySelector("#name-field").classList.toggle("hidden", !register);
   document.querySelector("#auth-password").autocomplete = register ? "new-password" : "current-password";
   document.querySelector("#auth-submit").textContent = register ? "Create account" : "Sign in";
-  document.querySelector("#auth-switch").innerHTML = register ? "Already have an account? <button type=\"button\" id=\"switch-auth\">Sign in</button>" : "New to Mayha Courts? <button type=\"button\" id=\"switch-auth\">Create an account</button>";
+  document.querySelector("#auth-switch").innerHTML = register ? "Already have an account? <button type=\"button\" id=\"switch-auth\">Sign in</button>" : "New to Mayha Square Pickleball Court? <button type=\"button\" id=\"switch-auth\">Create an account</button>";
   document.querySelector("#switch-auth").addEventListener("click", () => setAuthMode(!creatingAccount));
 }
 const SLOT_GROUPS = [

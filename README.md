@@ -1,4 +1,4 @@
-# Mayha Courts
+# Mayha Square Pickleball Court
 
 A responsive pickleball-court booking interface with a Firebase Realtime Database integration.
 

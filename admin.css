@@ -214,3 +214,7 @@ button.cal-slot:focus-visible:after{opacity:1}
   .now-line{left:52px}
 }
 .migration{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 16px;padding:14px 16px;border:1px solid #f3b59a;border-radius:var(--r-card);background:#fff8f3}.migration p{margin:2px 0 0;font-size:13px;color:var(--muted)}@media(max-width:700px){.migration{flex-direction:column;align-items:flex-start}}
+.brand-name{line-height:1.1}
+@media(max-width:700px){.brand{font-size:14px;letter-spacing:.4px}.brand-name b{display:block}}
+.brand-name,.brand-name b,.bar-right .ghost{white-space:nowrap}
+@media(max-width:380px){.bar{padding:0 14px}.brand{font-size:13px;gap:6px}.live span{display:none}.bar-right{gap:10px}}

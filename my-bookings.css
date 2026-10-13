@@ -98,3 +98,7 @@ body{margin:0;background:var(--cream);color:var(--ink);font:400 15px/1.45 Outfit
   .mb-book-link{font-size:13px}
 }
 button,input,select,textarea{font-family:Outfit,system-ui,sans-serif}
+.mb-bar .brand-name{line-height:1.1}
+@media(max-width:600px){.mb-bar .brand{font-size:14px;letter-spacing:.4px}.mb-bar .brand-name b{display:block}}
+.mb-bar .brand-name,.mb-bar .brand-name b,.mb-book-link{white-space:nowrap}
+@media(max-width:380px){.mb-bar{padding:0 14px}.mb-bar .brand{font-size:13px;gap:6px}.mb-bar-right{gap:12px}}
