@@ -2,52 +2,62 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#14509a" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f3f8fc" />
     <title>Mayha Square Pickleball Court</title>
+    <meta name="description" content="Book one of four pickleball courts at Mayha Square. One covered, three open-air. Pay with GCash or Maya." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="icon" href="./mayha-square-logo.png" type="image/png" />
+    <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="./mayha-logo-64.png" type="image/png" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./auth.css" />
     <link rel="stylesheet" href="./branding.css" />
     <link rel="stylesheet" href="./duration.css" />
     <link rel="stylesheet" href="./brand-theme.css" />
     <link rel="stylesheet" href="./payments.css" />
+    <link rel="stylesheet" href="./polish.css" />
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="Mayha Square Pickleball Court home"><img class="brand-logo" src="./mayha-square-logo.png" alt="Mayha Square Pickleball Court logo" /> MAYHA <b>COURTS</b></a>
-      <nav><a href="#book">Book a court</a><a href="./my-bookings.html">My bookings</a><a href="#how-it-works">How it works</a></nav>
-      <button class="profile-btn" id="account-btn" type="button" aria-label="Account">⌁</button>
+      <a class="brand" href="#top" aria-label="Mayha Square Pickleball Court home"><img class="brand-logo" src="./mayha-logo-64.webp" width="32" height="32" alt="" /> MAYHA <b>COURTS</b></a>
+      <nav><a href="#book">Book a court</a><a href="#courts">Courts</a><a href="./my-bookings.html">My bookings</a></nav>
+      <button class="profile-btn" id="account-btn" type="button" aria-label="Account"></button>
     </header>
 
     <main id="top">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">MAYHA SQUARE</p>
-          <h1>Find your<br /><em>perfect rally.</em></h1>
-          <p class="hero-text">Reserve a court in seconds. Show up, serve hard, and let the good games begin.</p>
+          <p class="hero-place"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" fill="currentColor"/></svg>Mayha Square</p>
+          <h1>Four courts.<br /><em>Any hour you want.</em></h1>
+          <p class="hero-text">One covered court and three open-air courts. Book online, pay with GCash or Maya, and play day or night.</p>
           <a class="primary-link" href="#book">Book a court <span>→</span></a>
+          <ul class="hero-facts">
+            <li><strong>4</strong><span>courts, 1 covered</span></li>
+            <li><strong>24 hrs</strong><span>Mon, Tue, Thu, Sat</span></li>
+            <li><strong>₱120</strong><span>per hour, from</span></li>
+          </ul>
         </div>
-        <div class="court-art" aria-hidden="true">
+        <div class="court-art" id="hero-art" data-photo="./photos/hero.jpg" aria-hidden="true">
           <div class="sun"></div><div class="hill h1"></div><div class="hill h2"></div>
           <div class="court"><i></i><i></i><i></i><i></i><b></b></div>
           <div class="ball ball-one"></div><div class="ball ball-two"></div>
-          <p>PLAY<br />MORE</p>
-          <img class="hero-logo" src="./mayha-square-logo.png" alt="Mayha Square Pickleball Court logo" />
+          <img class="hero-logo" src="./mayha-logo-256.webp" width="112" height="112" alt="" />
         </div>
       </section>
 
       <section class="booking-section" id="book">
-        <div class="section-heading"><p class="eyebrow">MAKE A RESERVATION</p><h2>Choose your game time.</h2></div>
+        <div class="section-heading"><h2>Choose your game time.</h2></div>
         <div class="booking-layout">
           <div class="booking-card">
+            <div class="date-field">
+              <span class="field-label" id="date-label">DATE</span>
+              <div class="date-strip" id="date-strip" role="group" aria-labelledby="date-label"></div>
+              <input id="booking-date" type="hidden" />
+            </div>
             <div class="field-row">
-              <label>DATE <input id="booking-date" type="date" /></label>
               <label>PLAY TIME <select id="duration"><option value="2" selected>2 hours</option><option value="4">4 hours</option></select></label>
-              <label>CONTACT NUMBER <input id="contact-phone" type="tel" autocomplete="tel" placeholder="09XX XXX XXXX" required /></label>
+              <label id="phone-field">CONTACT NUMBER <input id="contact-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX" required /><small class="field-error hidden" id="phone-error"></small></label>
               <label class="notes-field">BOOKING NOTE <input id="booking-note" type="text" maxlength="140" placeholder="Optional request or note" /></label>
             </div>
             <div class="court-tabs" role="tablist" aria-label="Court selection">
@@ -56,18 +66,20 @@
               <button class="court-tab" data-court="Court 3">Court 3 <small>Open air</small></button>
               <button class="court-tab" data-court="Court 4">Court 4 <small>Open air</small></button>
             </div>
-            <div class="times-heading"><span>AVAILABLE TIMES · OPEN 24/7</span><span id="rate-label">₱120–₱160 / hour</span></div>
-            <p class="rate-note" id="rate-note">7 AM–4 PM: ₱120/hr &nbsp;·&nbsp; 4 PM–7 AM: ₱160/hr</p>
-            <p class="night-rule-note">Bookings starting 6 PM onwards are 4 hours.</p>
             <div class="block-notice hidden" id="block-notice"></div>
-            <div class="time-grid" id="time-grid"></div>
+            <div class="time-groups" id="time-grid"></div>
           </div>
           <aside class="summary-card">
             <p class="eyebrow">YOUR RESERVATION</p>
-            <div class="summary-empty" id="summary-empty"><span>◌</span><p>Select a time slot<br />to continue.</p></div>
+            <div class="summary-empty" id="summary-empty">
+              <div class="court-visual mini" aria-hidden="true"><i class="kitchen"></i><i class="net"></i></div>
+              <p>Pick a court and a start time.</p>
+            </div>
             <div class="summary-details hidden" id="summary-details">
+              <div class="summary-visual" id="summary-visual" aria-hidden="true"></div>
               <h3 id="summary-court">Court 1</h3><p id="summary-date"></p><p id="summary-time"></p>
-              <div class="total"><span id="rental-label">1 hour court rental</span><strong id="summary-total">₱120</strong></div>
+              <div class="total"><span id="rental-label">2 hours court rental</span><strong id="summary-total">₱240</strong></div>
+              <p class="form-error hidden" id="booking-error" role="alert"></p>
               <button class="book-btn" id="book-btn" type="button">Confirm booking <span>→</span></button>
             </div>
             <p class="login-note" id="login-note">Create an account to reserve your slot.</p>
@@ -75,15 +87,25 @@
         </div>
       </section>
 
-      <section class="how" id="how-it-works"><p class="eyebrow">EASY AS 1—2—3</p><h2>More playing, less planning.</h2><div class="steps"><article><span>01</span><h3>Pick a court</h3><p>Choose indoor cover or open-air play.</p></article><article><span>02</span><h3>Choose a time</h3><p>See live availability and reserve your slot.</p></article><article><span>03</span><h3>Hit the court</h3><p>Get your confirmation and bring your A-game.</p></article></div></section>
+      <section class="courts" id="courts">
+        <h2>The courts.</h2>
+        <p class="section-sub">Court 1 has a roof, so it plays the same rain or shine. Courts 2 to 4 are open air.</p>
+        <div class="court-cards" id="court-cards"></div>
+      </section>
     </main>
 
-    <dialog id="booking-dialog" aria-labelledby="payment-title"><div class="payment-modal-header"><div><p class="eyebrow">PAYMENT</p><h2 id="payment-title">Complete your payment</h2></div><button class="dialog-close" id="dialog-close" aria-label="Close payment dialog">×</button></div><div class="payment-modal-body" id="payment-modal-body"><section class="payment-summary" id="payment-summary"><div class="summary-row"><span>COURT</span><strong id="payment-court"></strong></div><div class="summary-row"><span>DATE</span><strong id="payment-date"></strong></div><div class="summary-row"><span>TIME</span><strong id="payment-time"></strong></div></section><section class="payment-due"><span>AMOUNT TO PAY</span><strong class="payment-amount" id="payment-amount"></strong><p class="payment-hold" id="payment-hold" aria-live="polite"></p></section><div class="payment-tabs" id="payment-tabs" role="tablist" aria-label="Payment method"></div><section class="payment-qr-card"><div id="payment-method-details"></div></section><p class="payment-helper" id="payment-helper">Pay the exact amount, then enter your reference number below.</p><div class="payment-field"><label for="payment-reference">REFERENCE NUMBER</label><input id="payment-reference" type="text" minlength="6" autocomplete="off" autocapitalize="characters" placeholder="Enter your payment reference" /><p>Find this in your payment confirmation (at least 6 characters).</p></div><div class="payment-field"><span>SCREENSHOT (OPTIONAL)</span><input id="payment-proof" class="visually-hidden" type="file" accept="image/png,image/jpeg" /><label class="proof-dropzone" for="payment-proof"><b>↑ Upload screenshot</b><small>JPG or PNG, up to 5 MB</small></label><div class="proof-preview hidden" id="proof-preview"></div></div><p class="dialog-note hidden" id="payment-upload-note"></p><p class="auth-error hidden" id="payment-error" aria-live="polite"></p><div class="payment-submitted hidden" id="payment-submitted"><div>✓</div><strong>Payment submitted</strong><p id="confirmation-text">We'll confirm your booking once staff verify it.</p></div></div><div class="payment-modal-footer" id="payment-footer"><button class="book-btn" id="submit-payment" type="button" disabled>Submit payment <span>→</span></button><button class="payment-later" id="done-btn" type="button">Pay later</button><p>Your slot stays held until the timer runs out.</p></div></dialog>
+    <dialog id="booking-dialog" aria-labelledby="payment-title"><div class="payment-modal-header"><div><h2 id="payment-title">Complete your payment</h2></div><button class="dialog-close" id="dialog-close" aria-label="Close payment dialog">×</button></div><div class="payment-modal-body" id="payment-modal-body"><section class="payment-summary" id="payment-summary"><div class="summary-row"><span>COURT</span><strong id="payment-court"></strong></div><div class="summary-row"><span>DATE</span><strong id="payment-date"></strong></div><div class="summary-row"><span>TIME</span><strong id="payment-time"></strong></div></section><section class="payment-due"><span>AMOUNT TO PAY</span><strong class="payment-amount" id="payment-amount"></strong><p class="payment-hold" id="payment-hold" aria-live="polite"></p></section><div class="payment-tabs" id="payment-tabs" role="tablist" aria-label="Payment method"></div><section class="payment-qr-card"><div id="payment-method-details"></div></section><p class="payment-helper" id="payment-helper">Pay the exact amount, then enter your reference number below.</p><div class="payment-field"><label for="payment-reference">REFERENCE NUMBER</label><input id="payment-reference" type="text" minlength="6" autocomplete="off" autocapitalize="characters" placeholder="Enter your payment reference" /><p>Find this in your payment confirmation (at least 6 characters).</p></div><div class="payment-field"><span>SCREENSHOT (OPTIONAL)</span><input id="payment-proof" class="visually-hidden" type="file" accept="image/png,image/jpeg" /><label class="proof-dropzone" for="payment-proof"><b>↑ Upload screenshot</b><small>JPG or PNG, up to 5 MB</small></label><div class="proof-preview hidden" id="proof-preview"></div></div><p class="dialog-note hidden" id="payment-upload-note"></p><p class="auth-error hidden" id="payment-error" aria-live="polite"></p><div class="payment-submitted hidden" id="payment-submitted"><div>✓</div><strong>Payment submitted</strong><p id="confirmation-text">We'll confirm your booking once staff verify it.</p></div></div><div class="payment-modal-footer" id="payment-footer"><button class="book-btn" id="submit-payment" type="button" disabled>Submit payment</button><button class="payment-later" id="done-btn" type="button">Pay later</button><p>Your slot stays held until the timer runs out.</p></div></dialog>
     <dialog id="account-dialog" class="account-dialog">
-      <div class="auth-panel" id="auth-panel"><button class="dialog-close" id="auth-close" aria-label="Close">×</button><img class="auth-logo" src="./mayha-square-logo.png" alt="Mayha Square Pickleball Court logo" /><p class="eyebrow">MAYHA COURTS</p><h2 id="auth-title">Welcome back</h2><p class="auth-intro" id="auth-intro">Sign in to manage your court bookings.</p><form id="auth-form"><label id="name-field" class="hidden">FULL NAME<input id="auth-name" type="text" autocomplete="name" placeholder="Juan dela Cruz" /></label><label>EMAIL ADDRESS<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com" /></label><label>PASSWORD<input id="auth-password" type="password" autocomplete="current-password" required minlength="6" placeholder="Your password" /></label><p class="auth-error hidden" id="auth-error"></p><button class="book-btn" id="auth-submit" type="submit">Sign in <span>→</span></button></form><p class="auth-switch" id="auth-switch">New to Mayha Courts? <button type="button" id="switch-auth">Create an account</button></p></div>
-      <div class="signed-in-panel hidden" id="signed-in-panel"><button class="dialog-close" id="account-close" aria-label="Close">×</button><div class="success-mark">✓</div><p class="eyebrow">SIGNED IN</p><h2>Welcome back.</h2><p id="account-email"></p><a class="admin-link hidden" id="admin-link" href="./admin.html">Open admin dashboard <span>→</span></a><button class="book-btn" id="sign-out-btn" type="button">Sign out</button></div>
+      <div class="auth-panel" id="auth-panel"><button class="dialog-close" id="auth-close" aria-label="Close">×</button><img class="auth-logo" src="./mayha-logo-256.webp" width="76" height="76" alt="Mayha Square Pickleball Court logo" /><h2 id="auth-title">Welcome back</h2><p class="auth-intro" id="auth-intro">Sign in to manage your court bookings.</p><form id="auth-form"><label id="name-field" class="hidden">FULL NAME<input id="auth-name" type="text" autocomplete="name" placeholder="Juan dela Cruz" /></label><label>EMAIL ADDRESS<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com" /></label><label>PASSWORD<input id="auth-password" type="password" autocomplete="current-password" required minlength="6" placeholder="Your password" /></label><p class="auth-error hidden" id="auth-error"></p><button class="book-btn" id="auth-submit" type="submit">Sign in</button></form><p class="auth-switch" id="auth-switch">New to Mayha Courts? <button type="button" id="switch-auth">Create an account</button></p></div>
+      <div class="signed-in-panel hidden" id="signed-in-panel"><button class="dialog-close" id="account-close" aria-label="Close">×</button><div class="success-mark">✓</div><h2>Welcome back.</h2><p id="account-email"></p><a class="admin-link hidden" id="admin-link" href="./admin.html">Open admin dashboard</a><button class="book-btn" id="sign-out-btn" type="button">Sign out</button></div>
     </dialog>
-    <footer><span><img class="footer-logo" src="./mayha-square-logo.png" alt="" />© 2026 MAYHA COURTS</span><span>MADE FOR THE LOVE OF THE GAME</span></footer>
+    <footer class="site-footer">
+      <div class="footer-brand"><img class="footer-logo" src="./mayha-logo-64.webp" width="28" height="28" alt="" /><span>Mayha Square<br />Pickleball Court</span></div>
+      <div class="footer-col"><h3>Visit</h3><p id="footer-address">Mayha Square</p><a id="footer-directions" href="https://www.google.com/maps/search/?api=1&amp;query=Mayha%20Square%20Pickleball%20Court" target="_blank" rel="noopener">Get directions</a></div>
+      <div class="footer-col"><h3>Online booking</h3><p>Mon, Tue, Thu &amp; Sat, open 24 hours</p><p>Closed Wed, Fri &amp; Sun</p></div>
+      <div class="footer-col"><h3>Contact</h3><a id="footer-phone" class="hidden" href="#"></a><a href="./my-bookings.html">My bookings</a></div>
+      <p class="footer-copy">© 2026 Mayha Courts</p>
+    </footer>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>

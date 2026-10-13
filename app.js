@@ -25,6 +25,16 @@ const PAYMENT = {
     { id: "maya", label: "Maya", accountName: "YOUR NAME HERE", number: "09XX XXX XXXX", qr: "./maya-qr.png" }
   ]
 };
+// Venue details shown in the footer. Fill these in; empty values are simply hidden.
+const SITE = { address: "", phone: "" };
+// Put real photos in a "photos" folder: hero.jpg, court-1.jpg ... court-4.jpg. Missing photos fall back to drawings.
+const COURTS = [
+  { name: "Court 1", type: "Covered", photo: "./photos/court-1.jpg" },
+  { name: "Court 2", type: "Open air", photo: "./photos/court-2.jpg" },
+  { name: "Court 3", type: "Open air", photo: "./photos/court-3.jpg" },
+  { name: "Court 4", type: "Open air", photo: "./photos/court-4.jpg" }
+];
+const USER_ICON = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const demoBooked = new Set(["Court 1|9:00 AM", "Court 1|3:00 PM", "Court 2|10:00 AM", "Court 3|5:00 PM", "Court 4|7:00 PM"]);
 let selectedCourt = "Court 1";
 let selectedTime = null;
@@ -33,6 +43,9 @@ let blockedSlots = new Set();
 let activeReservation = null;
 let paymentMethodId = PAYMENT.methods[0].id;
 let stopAvailabilityListener = null;
+let dayBookings = {};
+let dayBlocks = {};
+const loadedPhotos = {};
 const dateInput = document.querySelector("#booking-date");
 const durationInput = document.querySelector("#duration");
 function localDateValue() { const now = new Date(); return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
@@ -54,7 +67,8 @@ function minHoursFor(time) { const hour = slotHour(time); return hour >= 18 || h
 function isWeekend(value = dateInput.value) { const day = dateAsLocal(value).getDay(); return day === 5 || day === 6 || day === 0; }
 function hourlyRate(time, value = dateInput.value) { const hour = slotHour(time), weekend = isWeekend(value); return hour >= 7 && hour < 16 ? (weekend ? 160 : 120) : (weekend ? 200 : 160); }
 function bookingPrice(time, duration = selectedDuration()) { return bookingSlots(time, duration).reduce((total, slot) => total + hourlyRate(slot), 0); }
-function updateRateDisplay() { const weekend = isWeekend(); const day = weekend ? 160 : 120, night = weekend ? 200 : 160; document.querySelector("#rate-label").textContent = `₱${day}–₱${night} / hour`; document.querySelector("#rate-note").innerHTML = `7 AM–4 PM: ₱${day}/hr &nbsp;·&nbsp; 4 PM–7 AM: ₱${night}/hr`; }
+function dayRates(value = dateInput.value) { const weekend = isWeekend(value); return { day: weekend ? 160 : 120, night: weekend ? 200 : 160 }; }
+function updateRateDisplay() { renderDateStrip(); }
 function isPastSlot(time) { if (dateInput.value !== localDateValue()) return false; const now = new Date(); const slotStart = new Date(); slotStart.setHours(slotHour(time), 0, 0, 0); return slotStart <= now; }
 function isBookedSlot(time) { return unavailable.has(time) || blockedSlots.has(time) || (!db && demoBooked.has(`${selectedCourt}|${time}`)); }
 function occupiesSlot(booking) { return booking && booking.status !== "cancelled" && (booking.status !== "pending_payment" || !!booking.proofSubmittedAt || Number(booking.holdExpiresAt) > Date.now()); }
@@ -104,11 +118,11 @@ function updateAccountUi() {
   document.querySelector("#signed-in-panel").classList.toggle("hidden", !currentUser);
   document.querySelector("#admin-link").classList.toggle("hidden", !isAdmin);
   if (currentUser) {
-    accountButton.textContent = (currentUser.displayName || currentUser.email || "A").charAt(0).toUpperCase();
+    accountButton.textContent = initials(currentUser.displayName || currentUser.email || "A");
     document.querySelector("#account-email").textContent = currentUser.email;
     note.textContent = `Signed in as ${currentUser.email}`;
   } else {
-    accountButton.textContent = "⌁";
+    accountButton.innerHTML = USER_ICON;
     note.textContent = "Create an account to reserve your slot.";
   }
 }
@@ -122,48 +136,135 @@ function setAuthMode(register) {
   document.querySelector("#auth-intro").textContent = register ? "Save your bookings and get ready to play." : "Sign in to manage your court bookings.";
   document.querySelector("#name-field").classList.toggle("hidden", !register);
   document.querySelector("#auth-password").autocomplete = register ? "new-password" : "current-password";
-  document.querySelector("#auth-submit").innerHTML = register ? "Create account <span>→</span>" : "Sign in <span>→</span>";
+  document.querySelector("#auth-submit").textContent = register ? "Create account" : "Sign in";
   document.querySelector("#auth-switch").innerHTML = register ? "Already have an account? <button type=\"button\" id=\"switch-auth\">Sign in</button>" : "New to Mayha Courts? <button type=\"button\" id=\"switch-auth\">Create an account</button>";
   document.querySelector("#switch-auth").addEventListener("click", () => setAuthMode(!creatingAccount));
 }
+const SLOT_GROUPS = [
+  { name: "Early morning", from: 0, to: 7, hours: "12 AM – 7 AM", rate: "night", note: "4-hour bookings" },
+  { name: "Daytime", from: 7, to: 16, hours: "7 AM – 4 PM", rate: "day" },
+  { name: "Evening", from: 16, to: 24, hours: "4 PM – 12 AM", rate: "night", note: "4 hours from 6 PM" }
+];
+function slotState(time) {
+  if (isClosedDate()) return { kind: "closed", text: "Closed" };
+  if (isBookedSlot(time)) return { kind: "booked", text: blockedSlots.has(time) ? "Unavailable" : "Booked" };
+  const range = bookingSlots(time);
+  const firstTaken = range.findIndex(slot => isBookedSlot(slot));
+  if (firstTaken > 0) return { kind: "short", text: `${firstTaken} hr free` };
+  if (range.length !== selectedDuration()) return { kind: "short", text: "Past midnight" };
+  if (selectedDuration() < minHoursFor(time)) return { kind: "short", text: "4 hrs only" };
+  return { kind: "open", text: `₱${bookingPrice(time)}` };
+}
+function shortTime(time) { return time.replace(":00", ""); }
 function renderSlots() {
-  const closed = isClosedDate();
-  document.querySelector("#book-btn").disabled = closed;
-  document.querySelector("#time-grid").innerHTML = slots.map(time => {
-    const unavailableSlot = !isSlotAvailable(time);
-    return `<button class="slot ${unavailableSlot ? "booked" : ""} ${time === selectedTime ? "selected" : ""}" data-time="${time}" ${unavailableSlot ? "disabled" : ""}>${slotLabel(time)}</button>`;
+  document.querySelector("#book-btn").disabled = isClosedDate();
+  const rates = dayRates();
+  const groups = SLOT_GROUPS.map(group => {
+    const times = slots.filter(time => { const hour = slotHour(time); return hour >= group.from && hour < group.to && !isPastSlot(time); });
+    if (!times.length) return "";
+    const buttons = times.map(time => {
+      const state = slotState(time), open = state.kind === "open", picked = time === selectedTime;
+      return `<button type="button" class="slot ${open ? "" : `booked ${state.kind}`} ${picked ? "selected" : ""}" data-time="${time}" ${open ? "" : "disabled"} aria-pressed="${picked}"><b>${shortTime(time)}</b><small>${state.text}</small></button>`;
+    }).join("");
+    return `<section class="slot-group"><header><strong>${group.name}</strong><span>${group.hours} · ₱${rates[group.rate]}/hr${group.note ? ` · ${group.note}` : ""}</span></header><div class="time-grid">${buttons}</div></section>`;
   }).join("");
-  document.querySelectorAll(".slot:not(.booked)").forEach(button => button.addEventListener("click", () => { selectedTime = button.dataset.time; renderSlots(); updateSummary(); }));
+  document.querySelector("#time-grid").innerHTML = groups || `<p class="slots-empty">No start times left today. Pick another date.</p>`;
+  document.querySelectorAll(".slot:not(.booked)").forEach(button => button.addEventListener("click", () => { selectedTime = button.dataset.time; clearBookingError(); renderSlots(); updateSummary(); }));
+}
+function renderDateStrip() {
+  const strip = document.querySelector("#date-strip"), start = dateAsLocal(localDateValue());
+  const days = Array.from({ length: 14 }, (_, offset) => { const day = new Date(start); day.setDate(start.getDate() + offset); return day; });
+  strip.innerHTML = days.map(day => {
+    const value = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    const closed = isClosedDate(value), active = value === dateInput.value;
+    return `<button type="button" class="day-chip ${active ? "active" : ""}" data-date="${value}" ${closed ? "disabled" : ""} aria-pressed="${active}" aria-label="${day.toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric" })}${closed ? ", closed" : ""}"><span>${day.toLocaleDateString("en-PH", { weekday: "short" })}</span><b>${day.getDate()}</b><small>${closed ? "Closed" : day.toLocaleDateString("en-PH", { month: "short" })}</small></button>`;
+  }).join("");
+  strip.querySelectorAll(".day-chip:not(:disabled)").forEach(chip => chip.addEventListener("click", () => { if (dateInput.value === chip.dataset.date) return; dateInput.value = chip.dataset.date; loadAvailability(); }));
+  const active = strip.querySelector(".day-chip.active");
+  if (active) strip.scrollLeft = Math.max(0, active.offsetLeft - strip.offsetLeft - 8);
+}
+function courtVisual(court, extraClass = "") {
+  const info = COURTS.find(item => item.name === court) || COURTS[0];
+  const photo = loadedPhotos[info.photo] === true;
+  return `<div class="court-visual ${info.type === "Covered" ? "covered" : ""} ${photo ? "has-photo" : ""} ${extraClass}" ${photo ? `style="--photo:url('${info.photo}')"` : ""} aria-hidden="true"><i class="kitchen"></i><i class="net"></i><span>${court.replace("Court ", "")}</span></div>`;
+}
+function openHoursFor(court) {
+  const key = courtKey(court);
+  const taken = new Set(Object.values(dayBookings[key] || {}).filter(occupiesSlot).map(booking => booking.time));
+  Object.keys(dayBlocks[key] || {}).forEach(saved => { const time = slots.find(item => timeKey(item) === saved); if (time) taken.add(time); });
+  if (!db) demoBooked.forEach(entry => { const [name, time] = entry.split("|"); if (name === court) taken.add(time); });
+  return slots.filter(time => !isPastSlot(time) && !taken.has(time)).length;
+}
+function renderCourtCards() {
+  const holder = document.querySelector("#court-cards"); if (!holder) return;
+  const rates = dayRates(), known = !db || !!currentUser;
+  const dayName = dateAsLocal(dateInput.value).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" });
+  holder.innerHTML = COURTS.map(court => {
+    const hours = known && !isClosedDate() ? openHoursFor(court.name) : null;
+    const availability = isClosedDate() ? "Closed this day" : hours === null ? "Sign in to see open times" : hours ? `${hours} open hour${hours === 1 ? "" : "s"} on ${dayName}` : `Fully booked on ${dayName}`;
+    return `<article class="court-card">${courtVisual(court.name)}<div class="court-card-body"><div class="court-card-title"><h3>${court.name}</h3><span class="court-type ${court.type === "Covered" ? "covered" : ""}">${court.type}</span></div><p class="court-availability">${availability}</p><p class="court-price">₱${rates.day}–₱${rates.night} per hour</p><button type="button" class="court-card-btn" data-court="${court.name}">Book ${court.name}</button></div></article>`;
+  }).join("");
+  holder.querySelectorAll(".court-card-btn").forEach(button => button.addEventListener("click", () => {
+    selectCourt(button.dataset.court);
+    document.querySelector("#book").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }));
+}
+function selectCourt(court) {
+  selectedCourt = court; selectedTime = null; clearBookingError();
+  document.querySelectorAll(".court-tab").forEach(item => { const active = item.dataset.court === court; item.classList.toggle("active", active); item.setAttribute("aria-selected", active); });
+  applyDayData();
+}
+function loadPhoto(src, done) { if (loadedPhotos[src] !== undefined) return; loadedPhotos[src] = false; const image = new Image(); image.onload = () => { loadedPhotos[src] = true; done(); }; image.src = src; }
+function initials(text) {
+  const words = String(text).split("@")[0].trim().split(/[\s._-]+/).filter(Boolean);
+  const picked = words.length > 1 ? [words[0], words[words.length - 1]] : [words[0] || "A"];
+  return picked.map(word => Array.from(word)[0]).join("").toUpperCase();
+}
+function showBookingError(message) { const box = document.querySelector("#booking-error"); box.textContent = message; box.classList.remove("hidden"); }
+function clearBookingError() { document.querySelector("#booking-error").classList.add("hidden"); document.querySelector("#phone-error").classList.add("hidden"); document.querySelector("#phone-field").classList.remove("invalid"); }
+function showPhoneError(message) {
+  const field = document.querySelector("#phone-field"), error = document.querySelector("#phone-error");
+  error.textContent = message; error.classList.remove("hidden"); field.classList.add("invalid");
+  field.querySelector("input").focus();
 }
 function updateSummary() {
   const empty = document.querySelector("#summary-empty"), details = document.querySelector("#summary-details");
   empty.classList.toggle("hidden", !!selectedTime); details.classList.toggle("hidden", !selectedTime);
   if (!selectedTime) return;
   document.querySelector("#summary-court").textContent = selectedCourt;
+  document.querySelector("#summary-visual").innerHTML = courtVisual(selectedCourt);
   document.querySelector("#summary-date").textContent = prettyDate(dateInput.value);
   const duration = selectedDuration();
   document.querySelector("#summary-time").textContent = `${selectedTime} – ${endTime(selectedTime, duration)}`;
   document.querySelector("#rental-label").textContent = `${duration} ${duration === 1 ? "hour" : "hours"} court rental`;
   document.querySelector("#summary-total").textContent = `₱${bookingPrice(selectedTime, duration)}`;
 }
-async function loadAvailability() {
-  selectedTime = null; unavailable = new Set(); blockedSlots = new Set(); updateRateDisplay();
-  if (isClosedDate()) { renderBlockNotice({ closed: { reason:"Courts are closed on Wednesdays, Fridays and Sundays. Please choose another date." } }); document.querySelector("#block-notice").classList.remove("hidden"); document.querySelector("#block-notice").textContent = "Courts are closed on Wednesdays, Fridays and Sundays. Please choose another date."; renderSlots(); updateSummary(); return; }
-  renderSlots(); updateSummary();
-  if (!db) return;
-  if (stopAvailabilityListener) stopAvailabilityListener();
-  const scheduleRef = db.ref(bookingPath());
-  const listener = snapshot => {
-    unavailable = new Set(Object.values(snapshot.val() || {}).filter(occupiesSlot).map(booking => booking.time));
-    renderSlots();
-  };
-  scheduleRef.on("value", listener, error => console.warn("Could not load bookings from Firebase", error));
-  stopAvailabilityListener = () => scheduleRef.off("value", listener);
-  db.ref(`blocks/${dateInput.value}/${courtKey(selectedCourt)}`).on("value", snapshot => { const blockData = snapshot.val() || {}; blockedSlots = new Set(Object.keys(blockData).map(savedKey => slots.find(time => timeKey(time) === savedKey)).filter(Boolean)); renderBlockNotice(blockData); renderSlots(); });
+function applyDayData() {
+  const key = courtKey(selectedCourt);
+  unavailable = new Set(Object.values(dayBookings[key] || {}).filter(occupiesSlot).map(booking => booking.time));
+  const blockData = dayBlocks[key] || {};
+  blockedSlots = new Set(Object.keys(blockData).map(saved => slots.find(time => timeKey(time) === saved)).filter(Boolean));
+  if (isClosedDate()) { const notice = document.querySelector("#block-notice"); notice.textContent = "Online booking is closed on Wednesdays, Fridays and Sundays. Pick another date."; notice.classList.remove("hidden"); }
+  else renderBlockNotice(blockData);
+  if (selectedTime && slotState(selectedTime).kind !== "open") selectedTime = null;
+  renderSlots(); updateSummary(); renderCourtCards();
 }
-document.querySelectorAll(".court-tab").forEach(tab => tab.addEventListener("click", () => { selectedCourt = tab.dataset.court; document.querySelectorAll(".court-tab").forEach(item => item.classList.toggle("active", item === tab)); loadAvailability(); }));
-dateInput.addEventListener("change", loadAvailability);
-durationInput.addEventListener("change", () => { selectedTime = null; renderSlots(); updateSummary(); });
+async function loadAvailability() {
+  selectedTime = null; unavailable = new Set(); blockedSlots = new Set(); dayBookings = {}; dayBlocks = {};
+  clearBookingError(); updateRateDisplay();
+  if (stopAvailabilityListener) { stopAvailabilityListener(); stopAvailabilityListener = null; }
+  applyDayData();
+  if (!db || !currentUser || isClosedDate()) return;
+  const date = dateInput.value, bookingsRef = db.ref(`bookings/${date}`), blocksRef = db.ref(`blocks/${date}`);
+  const onBookings = snapshot => { if (date !== dateInput.value) return; dayBookings = snapshot.val() || {}; applyDayData(); };
+  const onBlocks = snapshot => { if (date !== dateInput.value) return; dayBlocks = snapshot.val() || {}; applyDayData(); };
+  bookingsRef.on("value", onBookings, error => console.warn("Could not load bookings from Firebase", error));
+  blocksRef.on("value", onBlocks, error => console.warn("Could not load blocks from Firebase", error));
+  stopAvailabilityListener = () => { bookingsRef.off("value", onBookings); blocksRef.off("value", onBlocks); };
+}
+document.querySelectorAll(".court-tab").forEach(tab => { tab.setAttribute("role", "tab"); tab.setAttribute("aria-selected", tab.classList.contains("active")); tab.addEventListener("click", () => selectCourt(tab.dataset.court)); });
+document.querySelector("#contact-phone").addEventListener("input", () => { document.querySelector("#phone-error").classList.add("hidden"); document.querySelector("#phone-field").classList.remove("invalid"); });
+durationInput.addEventListener("change", () => { const keep = selectedTime; selectedTime = null; if (keep && slotState(keep).kind === "open") selectedTime = keep; clearBookingError(); renderSlots(); updateSummary(); });
 document.querySelector("#account-btn").addEventListener("click", showAccountDialog);
 document.querySelector("#auth-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
 document.querySelector("#account-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
@@ -193,14 +294,16 @@ document.querySelector("#auth-form").addEventListener("submit", async event => {
 });
 document.querySelector("#book-btn").addEventListener("click", async () => {
   if (!currentUser) { showAccountDialog(); return; }
-  if (isClosedDate()) { alert("Courts are closed on Wednesdays, Fridays and Sundays. Please choose another date."); return; }
+  clearBookingError();
+  if (isClosedDate()) { showBookingError("Online booking is closed on Wednesdays, Fridays and Sundays. Pick another date."); return; }
   if (!selectedTime) return;
   const duration = selectedDuration();
   const reservedSlots = bookingSlots(selectedTime, duration);
-  if (reservedSlots.length !== duration) { alert("Choose a time that leaves enough hours before midnight."); return; }
+  if (reservedSlots.length !== duration) { showBookingError("That booking would run past midnight. Pick an earlier start time."); return; }
   const phone = document.querySelector("#contact-phone").value.trim();
-  if (!phone) { alert("Please enter a contact number."); return; }
-  if (duration < minHoursFor(selectedTime)) { alert("Bookings starting 6 PM onwards are 4 hours."); return; }
+  if (!phone) { showPhoneError("Add a number so staff can reach you."); return; }
+  if (phone.replace(/\D/g, "").length < 10) { showPhoneError("That number looks too short."); return; }
+  if (duration < minHoursFor(selectedTime)) { showBookingError("Bookings that start from 6 PM to 6 AM are 4 hours. Switch play time to 4 hours."); return; }
   const button = document.querySelector("#book-btn"); button.disabled = true; button.textContent = "Saving…";
   try {
     const reservationId = `${currentUser.uid}-${Date.now()}`;
@@ -213,7 +316,7 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
     openPaymentDialog(activeReservation);
     loadAvailability();
   }
-  catch (error) { alert(error?.code === "PERMISSION_DENIED" ? "That time is no longer available, or your Firebase booking rules have not been published yet." : "We couldn't save this booking. Please try again."); loadAvailability(); console.error(error); }
+  catch (error) { const message = error?.code === "PERMISSION_DENIED" ? "Someone just took that time. Pick another slot." : "We couldn't save this booking. Check your connection and try again."; loadAvailability(); showBookingError(message); console.error(error); }
   finally { button.disabled = false; button.innerHTML = "Confirm booking <span>→</span>"; }
 });
 function renderPaymentMethod() { const method = PAYMENT.methods.find(item => item.id === paymentMethodId); const holder = document.querySelector("#payment-method-details"); holder.innerHTML = `<img class="payment-qr" src="${method.qr}" alt="${method.label} QR code" /><strong>${method.accountName}</strong><span id="payment-number">${method.number}</span><button id="copy-payment-number" type="button">⧉ <span>Copy number</span></button><p>Scan the QR in your ${method.label} app, or send to the number above.</p>`; const qr = holder.querySelector("img"); qr.onerror = () => { qr.remove(); }; const copy = document.querySelector("#copy-payment-number"); copy.onclick = async () => { try { if (navigator.clipboard) await navigator.clipboard.writeText(method.number); else { const area=document.createElement("textarea"); area.value=method.number; document.body.append(area); area.select(); document.execCommand("copy"); area.remove(); } copy.querySelector("span").textContent = "Copied ✓"; setTimeout(() => copy.querySelector("span").textContent = "Copy number", 2000); } catch { } }; }
@@ -221,13 +324,23 @@ function openPaymentDialog(reservation) { activeReservation = reservation; payme
 function updatePaymentHold() { if (!activeReservation) return; const remaining = Math.max(0, Math.ceil((Number(activeReservation.holdExpiresAt) - Date.now()) / 1000)), pill=document.querySelector("#payment-hold"); pill.classList.toggle("warning", remaining > 0 && remaining < 300); pill.classList.toggle("expired", !remaining); pill.textContent = remaining ? `● Held for you · ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}` : "Hold expired"; }
 function updateSubmitState() { document.querySelector("#submit-payment").disabled = document.querySelector("#payment-reference").value.trim().length < 6; }
 async function compressProof(file) { if (!file || !file.type.startsWith("image/")) throw new Error("Choose an image file."); if (file.size > 5 * 1024 * 1024) throw new Error("The image must be under 5 MB."); const image = await createImageBitmap(file), scale = Math.min(1, 1280 / image.width), canvas = document.createElement("canvas"); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale); canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height); return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .82)); }
-document.querySelector("#submit-payment").addEventListener("click", async () => { const reference = document.querySelector("#payment-reference").value.trim(), errorBox = document.querySelector("#payment-error"); errorBox.classList.add("hidden"); if (!activeReservation || reference.length < 6) { errorBox.textContent = "Enter a payment reference with at least 6 characters."; errorBox.classList.remove("hidden"); return; } const button = document.querySelector("#submit-payment"); button.disabled = true; button.textContent = "Submitting…"; let proofUrl = ""; try { const file = document.querySelector("#payment-proof").files[0]; if (file && storage) { try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${currentUser.uid}/${activeReservation.reservationId}.jpg`).put(blob, { contentType:"image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); } catch (uploadError) { document.querySelector("#payment-upload-note").textContent = "Screenshot could not be uploaded. Your reference number will still be submitted."; document.querySelector("#payment-upload-note").classList.remove("hidden"); } } const updates = {}; activeReservation.slots.forEach(slot => { const base = `bookings/${activeReservation.date}/${courtKey(activeReservation.court)}/${timeKey(slot)}`; updates[`${base}/paymentReference`] = reference; updates[`${base}/paymentMethod`] = paymentMethodId; updates[`${base}/proofSubmittedAt`] = Date.now(); if (proofUrl) updates[`${base}/proofUrl`] = proofUrl; }); await db.ref().update(updates); document.querySelector("#confirmation-text").textContent = "Payment submitted. We'll confirm your booking once staff verify it."; document.querySelector("#submit-payment").classList.add("hidden"); } catch (error) { errorBox.textContent = error.message || "We could not submit payment details."; errorBox.classList.remove("hidden"); } finally { button.disabled = false; button.innerHTML = "Submit payment <span>→</span>"; } });
+document.querySelector("#submit-payment").addEventListener("click", async () => { const reference = document.querySelector("#payment-reference").value.trim(), errorBox = document.querySelector("#payment-error"); errorBox.classList.add("hidden"); if (!activeReservation || reference.length < 6) { errorBox.textContent = "Enter a payment reference with at least 6 characters."; errorBox.classList.remove("hidden"); return; } const button = document.querySelector("#submit-payment"); button.disabled = true; button.textContent = "Submitting…"; let proofUrl = ""; try { const file = document.querySelector("#payment-proof").files[0]; if (file && storage) { try { const blob = await compressProof(file); const result = await storage.ref(`payment-proofs/${currentUser.uid}/${activeReservation.reservationId}.jpg`).put(blob, { contentType:"image/jpeg" }); proofUrl = await result.ref.getDownloadURL(); } catch (uploadError) { document.querySelector("#payment-upload-note").textContent = "Screenshot could not be uploaded. Your reference number will still be submitted."; document.querySelector("#payment-upload-note").classList.remove("hidden"); } } const updates = {}; activeReservation.slots.forEach(slot => { const base = `bookings/${activeReservation.date}/${courtKey(activeReservation.court)}/${timeKey(slot)}`; updates[`${base}/paymentReference`] = reference; updates[`${base}/paymentMethod`] = paymentMethodId; updates[`${base}/proofSubmittedAt`] = Date.now(); if (proofUrl) updates[`${base}/proofUrl`] = proofUrl; }); await db.ref().update(updates); document.querySelector("#confirmation-text").textContent = "Payment submitted. We'll confirm your booking once staff verify it."; document.querySelector("#submit-payment").classList.add("hidden"); } catch (error) { errorBox.textContent = error.message || "We could not submit payment details."; errorBox.classList.remove("hidden"); } finally { button.disabled = false; button.textContent = "Submit payment"; } });
 document.querySelector("#dialog-close").addEventListener("click", () => document.querySelector("#booking-dialog").close());
 document.querySelector("#done-btn").addEventListener("click", () => document.querySelector("#booking-dialog").close());
 setInterval(updatePaymentHold, 1000);
 document.querySelector("#payment-reference").addEventListener("input", updateSubmitState);
 document.querySelector("#payment-reference").addEventListener("focus", event => event.target.scrollIntoView({ block:"center", behavior:"smooth" }));
 document.querySelector("#payment-proof").addEventListener("change", event => { const preview = document.querySelector("#proof-preview"), file = event.target.files[0]; if (!file) { preview.classList.add("hidden"); preview.innerHTML = ""; return; } if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { document.querySelector("#payment-error").textContent = "Use a JPG or PNG image under 5 MB."; document.querySelector("#payment-error").classList.remove("hidden"); event.target.value = ""; return; } const url = URL.createObjectURL(file); preview.innerHTML = `<img src="${url}" alt="Selected screenshot" /><span>${file.name}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`; preview.classList.remove("hidden"); preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; preview.classList.add("hidden"); preview.innerHTML = ""; }; });
+function initSite() {
+  if (SITE.address) document.querySelector("#footer-address").textContent = SITE.address;
+  if (SITE.address) document.querySelector("#footer-directions").href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SITE.address)}`;
+  if (SITE.phone) { const link = document.querySelector("#footer-phone"); link.textContent = SITE.phone; link.href = `tel:${SITE.phone.replace(/[^\d+]/g, "")}`; link.classList.remove("hidden"); }
+  const hero = document.querySelector("#hero-art");
+  loadPhoto(hero.dataset.photo, () => { hero.style.setProperty("--photo", `url('${hero.dataset.photo}')`); hero.classList.add("has-photo"); });
+  COURTS.forEach(court => loadPhoto(court.photo, () => { renderCourtCards(); updateSummary(); }));
+}
 setAuthMode(false);
-renderSlots();
+initSite();
+updateAccountUi();
+loadAvailability();
 connectFirebase();
