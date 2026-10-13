@@ -9,7 +9,7 @@ button,.slot,.day-chip,.court-tab,.payment-tabs button{-webkit-user-select:none;
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 
 /* Type: two families. Small uppercase labels use Outfit. */
-label,.field-label,.times-heading,.summary-row span,.payment-due>span,.payment-field>span,.payment-field>label{font-family:Outfit,sans-serif;font-weight:600;font-size:11px;letter-spacing:.08em;color:var(--muted)}
+label,.field-label,.times-heading,.summary-row span,.payment-due>span,.payment-field>span,.payment-field>label{font-family:Outfit,sans-serif;font-weight:600;font-size:0.6875rem;letter-spacing:.08em;color:var(--muted)}
 .eyebrow{font-family:Outfit,sans-serif;font-weight:600;letter-spacing:.1em}
 .slot,.day-chip b,.total strong,.payment-amount,.hero-facts strong,.court-price,.court-availability,#payment-number,.summary-row strong{font-variant-numeric:tabular-nums}
 
@@ -24,17 +24,17 @@ input,select,.slot,.primary-link,.book-btn,.button,.admin-link,.day-chip,.cancel
 .book-btn:disabled{opacity:.5;cursor:not-allowed}
 
 /* Header */
-.profile-btn{display:grid;place-items:center;padding:0;font:700 13px Outfit,sans-serif;letter-spacing:.02em;cursor:pointer}
+.profile-btn{display:grid;place-items:center;padding:0;font:700 0.8125rem Outfit,sans-serif;letter-spacing:.02em;cursor:pointer}
 .topbar nav a{padding:6px 0}
 
 /* Hero */
-.hero-place{display:inline-flex;align-items:center;gap:6px;margin:0 0 20px;padding:6px 11px 6px 9px;border-radius:99px;background:#ffffff1a;color:var(--lime);font:600 13px Outfit,sans-serif}
+.hero-place{display:inline-flex;align-items:center;gap:6px;margin:0 0 20px;padding:6px 11px 6px 9px;border-radius:99px;background:#ffffff1a;color:var(--lime);font:600 0.8125rem Outfit,sans-serif}
 .hero-text{max-width:400px}
 .primary-link{border-radius:var(--r-control)}
 .hero-facts{display:flex;flex-wrap:wrap;gap:14px 34px;list-style:none;margin:36px 0 0;padding:20px 0 0;border-top:1px solid #ffffff2e}
 .hero-facts li{display:grid;gap:3px}
-.hero-facts strong{font:800 22px/1 Bitter,Georgia,serif;color:var(--lime)}
-.hero-facts span{font-size:13px;color:#dcebfa}
+.hero-facts strong{font:800 1.375rem/1 Bitter,Georgia,serif;color:var(--lime)}
+.hero-facts span{font-size:0.8125rem;color:#dcebfa}
 .court-art.has-photo{background:var(--photo) center/cover no-repeat}
 .court-art.has-photo>*{display:none}
 
@@ -43,9 +43,9 @@ input,select,.slot,.primary-link,.book-btn,.button,.admin-link,.day-chip,.cancel
 .field-label{display:block;margin-bottom:9px}
 .date-strip{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 8px;margin:0 -2px;scrollbar-width:thin;overscroll-behavior-x:contain}
 .day-chip{flex:0 0 60px;display:grid;justify-items:center;gap:1px;padding:9px 4px 8px;border:1px solid #bfd7e8;background:#fff;color:var(--ink);font-family:Outfit,sans-serif;cursor:pointer;scroll-snap-align:start}
-.day-chip span{font-size:12px;font-weight:600;color:var(--muted)}
-.day-chip b{font-size:20px;line-height:1.15;font-weight:700}
-.day-chip small{font-size:11px;color:var(--muted)}
+.day-chip span{font-size:0.75rem;font-weight:600;color:var(--muted)}
+.day-chip b{font-size:1.25rem;line-height:1.15;font-weight:700}
+.day-chip small{font-size:0.6875rem;color:var(--muted)}
 .day-chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
 .day-chip.active span,.day-chip.active small{color:#cfe3f5}
 .day-chip.active b{color:var(--lime)}
@@ -53,30 +53,30 @@ input,select,.slot,.primary-link,.book-btn,.button,.admin-link,.day-chip,.cancel
 .day-chip:disabled small{color:var(--orange);font-weight:600}
 .field-row{grid-template-columns:1fr 1fr}
 .field-row .notes-field{grid-column:1/-1}
-.field-error:not(.hidden){display:block;margin-top:6px;color:#b43b25;font:500 12px Outfit,sans-serif;letter-spacing:0;text-transform:none}
+.field-error:not(.hidden){display:block;margin-top:6px;color:#b43b25;font:500 0.75rem Outfit,sans-serif;letter-spacing:0;text-transform:none}
 .invalid input{border-color:#e0806a;background:#fff8f6}
 .court-tab{border-radius:0}
 
 /* Time slots, grouped by rate */
 .time-groups{display:grid;gap:20px}
 .slot-group header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;margin-bottom:9px}
-.slot-group header strong{font-size:15px;color:var(--ink)}
-.slot-group header span{font-size:12px;color:var(--muted)}
+.slot-group header strong{font-size:0.9375rem;color:var(--ink)}
+.slot-group header span{font-size:0.75rem;color:var(--muted)}
 .slot{display:grid;gap:2px;padding:10px 6px 9px;text-decoration:none!important;background:#fff}
-.slot b{font-size:15px;font-weight:700}
-.slot small{font-size:12px;font-weight:500;color:var(--muted)}
+.slot b{font-size:0.9375rem;font-weight:700}
+.slot small{font-size:0.75rem;font-weight:500;color:var(--muted)}
 .slot.selected small{color:var(--lime)}
 .slot.booked{background:#eef3f7;color:#8796a1;border-color:#e1e9ef;opacity:.7;cursor:not-allowed}
 .slot.booked small{color:#8796a1}
 .slot.short{background:#fff;border-style:dashed;opacity:.8}
-.slots-empty{margin:4px 0 0;color:var(--muted);font-size:14px}
+.slots-empty{margin:4px 0 0;color:var(--muted);font-size:0.875rem}
 .block-notice{margin-bottom:18px}
 
 /* Summary card */
 .summary-empty{flex-direction:column;gap:16px;padding:24px 0}
 .summary-empty p{margin:0}
 .summary-visual .court-visual{margin:16px 0 4px;border-radius:var(--r-control)}
-.form-error{margin:0 0 12px;padding:10px 12px;background:#fff0eb;color:#a43d23;font-size:13px;line-height:1.4}
+.form-error{margin:0 0 12px;padding:10px 12px;background:#fff0eb;color:#a43d23;font-size:0.8125rem;line-height:1.4}
 
 /* Court drawing (used until real photos exist) */
 .court-visual{position:relative;aspect-ratio:16/10;background:var(--apron);overflow:hidden}
@@ -84,7 +84,7 @@ input,select,.slot,.primary-link,.book-btn,.button,.admin-link,.day-chip,.cancel
 .court-visual:after{content:"";position:absolute;top:50%;left:10%;right:10%;height:2px;margin-top:-1px;background:linear-gradient(to right,#fff 0 34.1%,transparent 34.1% 65.9%,#fff 65.9%)}
 .court-visual .kitchen{position:absolute;top:16%;bottom:16%;left:37.3%;width:25.4%;border-left:2px solid #fff;border-right:2px solid #fff;background:#ffffff14}
 .court-visual .net{position:absolute;top:11%;bottom:11%;left:50%;width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 0 1px #0b2c5a40}
-.court-visual span{position:absolute;left:10px;bottom:9px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;color:var(--ink);font:800 14px Bitter,Georgia,serif;z-index:1}
+.court-visual span{position:absolute;left:10px;bottom:9px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;color:var(--ink);font:800 0.875rem Bitter,Georgia,serif;z-index:1}
 .court-visual.covered{background:repeating-linear-gradient(90deg,#174f86 0 14px,#1b5a96 14px 28px)}
 .court-visual.covered:before{box-shadow:0 0 0 999px #0b2c5a26}
 .court-visual.has-photo{background:var(--photo) center/cover no-repeat}
@@ -94,27 +94,27 @@ input,select,.slot,.primary-link,.book-btn,.button,.admin-link,.day-chip,.cancel
 
 /* Courts section */
 .courts{padding:100px 12vw;background:#e7f3fb}
-.courts h2{font-size:40px;letter-spacing:-1.5px;margin-bottom:12px}
-.section-sub{max-width:520px;margin:0 0 34px;color:var(--muted);font-size:16px;line-height:1.5}
+.courts h2{font-size:2.5rem;letter-spacing:-.03em;margin-bottom:12px}
+.section-sub{max-width:520px;margin:0 0 34px;color:var(--muted);font-size:1rem;line-height:1.5}
 .court-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
 .court-card{background:var(--surface);border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column}
 .court-card-body{display:flex;flex-direction:column;gap:6px;padding:16px 16px 18px;flex:1}
 .court-card-title{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.court-card h3{margin:0;font:800 20px Bitter,Georgia,serif}
-.court-type{padding:4px 9px;border-radius:99px;background:#e7f3fb;color:var(--ink);font-size:12px;font-weight:600;white-space:nowrap}
+.court-card h3{margin:0;font:800 1.25rem Bitter,Georgia,serif}
+.court-type{padding:4px 9px;border-radius:99px;background:#e7f3fb;color:var(--ink);font-size:0.75rem;font-weight:600;white-space:nowrap}
 .court-type.covered{background:#dff7e4}
-.court-availability{margin:4px 0 0;font-size:14px;font-weight:600;color:var(--ink)}
-.court-price{margin:0 0 10px;font-size:13px;color:var(--muted)}
-.court-card-btn{margin-top:auto;padding:11px 12px;border:1px solid #a7c8df;background:#fff;color:var(--ink);font:700 14px Outfit,sans-serif;cursor:pointer}
+.court-availability{margin:4px 0 0;font-size:0.875rem;font-weight:600;color:var(--ink)}
+.court-price{margin:0 0 10px;font-size:0.8125rem;color:var(--muted)}
+.court-card-btn{margin-top:auto;padding:11px 12px;border:1px solid #a7c8df;background:#fff;color:var(--ink);font:700 0.875rem Outfit,sans-serif;cursor:pointer}
 
 /* Footer */
-.site-footer{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:28px;padding:52px 12vw 28px;background:var(--ink);color:#d5e6f4;font:400 14px/1.5 Outfit,sans-serif;letter-spacing:0}
-.site-footer .footer-brand{display:flex;align-items:flex-start;gap:10px;font:800 16px/1.25 Bitter,Georgia,serif;color:#fff}
+.site-footer{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:28px;padding:52px 12vw 28px;background:var(--ink);color:#d5e6f4;font:400 0.875rem/1.5 Outfit,sans-serif;letter-spacing:0}
+.site-footer .footer-brand{display:flex;align-items:flex-start;gap:10px;font:800 1rem/1.25 Bitter,Georgia,serif;color:#fff}
 .site-footer .footer-logo{margin:0}
-.site-footer h3{margin:0 0 10px;font:600 11px Outfit,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--lime)}
+.site-footer h3{margin:0 0 10px;font:600 0.6875rem Outfit,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--lime)}
 .site-footer p{margin:0 0 4px}
 .site-footer a{display:block;width:max-content;margin:0 0 4px;color:#fff;text-underline-offset:3px}
-.site-footer .footer-copy{grid-column:1/-1;margin-top:12px;padding-top:18px;border-top:1px solid #ffffff26;font-size:12px;color:#a9c6e3}
+.site-footer .footer-copy{grid-column:1/-1;margin-top:12px;padding-top:18px;border-top:1px solid #ffffff26;font-size:0.75rem;color:#a9c6e3}
 
 /* Dialogs: enter 220ms, exit 150ms, from 96% scale */
 dialog{border-radius:var(--r-dialog);opacity:0;transform:scale(.96);transition:opacity 150ms var(--ease-out),transform 150ms var(--ease-out),overlay 150ms allow-discrete,display 150ms allow-discrete}
@@ -143,20 +143,42 @@ dialog[open]::backdrop{opacity:1;transition-duration:220ms}
 @media(max-width:1000px){.court-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.site-footer{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){
   .hero-facts{gap:14px 24px;margin-top:30px}
-  .hero-facts strong{font-size:19px}
+  .hero-facts strong{font-size:1.1875rem}
   .courts{padding:68px 7vw}
-  .courts h2{font-size:34px}
+  .courts h2{font-size:2.125rem}
   .field-row{grid-template-columns:1fr}
   .booking-card,.summary-card{padding:22px 18px}
-  .site-footer{grid-template-columns:1fr;gap:22px;padding:40px 7vw calc(24px + env(safe-area-inset-bottom));font-size:14px}
+  .site-footer{grid-template-columns:1fr;gap:22px;padding:40px 7vw calc(24px + env(safe-area-inset-bottom));font-size:0.875rem}
 }
 @media(max-width:560px){.court-cards{grid-template-columns:1fr}}
-input,select{font-size:16px}
+input,select{font-size:1rem}
 .slot-group header{height:auto;padding:0;border:0;background:none}
 .booking-card,.summary-card{min-width:0}
 @media(max-width:700px){.booking-layout{grid-template-columns:minmax(0,1fr)}}
 .court-tabs{overflow-x:auto;scrollbar-width:none}.court-tab{white-space:nowrap;flex:none}@media(max-width:700px){.court-tabs{gap:16px}}
 .payment-tabs{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}
 .brand-name{display:inline-block;vertical-align:middle;line-height:1.1}
-@media(max-width:600px){.brand{font-size:14px;letter-spacing:.4px}.brand-name b{display:block}}
+@media(max-width:600px){.brand{font-size:0.875rem;letter-spacing:.4px}.brand-name b{display:block}}
 .brand-name,.brand-name b{white-space:nowrap}
+
+/* ---------- Frosted header: content scrolls underneath ---------- */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(243,248,252,.74);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom-color:transparent;transition:box-shadow 200ms ease,border-color 200ms ease}
+.topbar.scrolled{border-bottom-color:rgba(20,80,154,.08);box-shadow:0 10px 24px -14px rgba(11,44,90,.28)}
+#book,#courts{scroll-margin-top:84px}
+
+/* ---------- Phones: floating confirm bar once a time is picked ---------- */
+.confirm-bar{display:none}
+@media (max-width:860px){
+  .confirm-bar{display:flex;align-items:center;gap:12px;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:50;padding:10px 10px 10px 16px;border:1px solid rgba(255,255,255,.65);border-radius:18px;background:rgba(255,255,255,.8);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:0 14px 34px -10px rgba(11,44,90,.38),0 2px 6px rgba(11,44,90,.08);opacity:0;transform:translateY(calc(100% + 28px)) scale(.98);pointer-events:none;transition:transform 240ms cubic-bezier(.32,.72,0,1),opacity 180ms ease}
+  .confirm-bar.show{opacity:1;transform:none;pointer-events:auto;transition-duration:440ms,220ms}
+  .confirm-bar-text{flex:1;min-width:0}
+  .confirm-bar-text b{display:block;overflow:hidden;font-size:.95rem;white-space:nowrap;text-overflow:ellipsis}
+  .confirm-bar-text span{display:block;font-size:.8125rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .confirm-bar .book-btn{flex:none;width:auto;margin:0;padding:12px 18px;border-radius:12px;gap:8px}
+  body.has-confirm-bar{padding-bottom:96px}
+}
+
+/* ---------- Accessibility settings ---------- */
+@media (prefers-reduced-motion:reduce){.confirm-bar{transform:none!important;transition:opacity 200ms ease!important}}
+@media (prefers-reduced-transparency:reduce){.topbar,.confirm-bar{background:#f3f8fc;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-contrast:more){.topbar{background:var(--cream);border-bottom:2px solid var(--ink)}.confirm-bar{background:#fff;border:2px solid var(--ink)}}

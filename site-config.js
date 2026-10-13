@@ -184,3 +184,71 @@ async function saveProof(db, uid, reservationId, file) {
   await withTimeout(db.ref(`paymentProofs/${reservationId}`).set({ uid, image, createdAt: Date.now() }), 15000);
   return true;
 }
+
+/* ---------- interface helpers shared by the booking page and My Bookings ---------- */
+/* A short buzz on success. Android only; iPhone browsers ignore it. Used only when a hold or payment goes through. */
+function haptic() { try { navigator.vibrate?.(12); } catch {} }
+
+/* Frosted header: adds a soft edge shadow only once content is scrolling underneath it. */
+function frostOnScroll(header) {
+  if (!header) return;
+  const update = () => header.classList.toggle("scrolled", window.scrollY > 4);
+  addEventListener("scroll", update, { passive: true }); update();
+}
+
+/* Bottom sheet on phones: drag the top bar to move it, flick or pull down to close.
+   It follows the finger 1:1, resists when pulled upward, can be grabbed mid-animation,
+   and hands the finger's speed over to the settle animation so there's no seam. */
+const SHEET_EASE = "cubic-bezier(0.32, 0.72, 0, 1)"; // starts at ~2.25x its average speed
+function sheetY(el) { const t = getComputedStyle(el).transform; return t && t !== "none" ? new DOMMatrixReadOnly(t).m42 : 0; }
+function rubberband(distance, dimension, constant = 0.55) { return (distance * dimension * constant) / (dimension + constant * Math.abs(distance)); }
+function projectFlick(velocityPxPerMs, rate = 0.99) { return velocityPxPerMs * rate / (1 - rate); }
+function prepareSheet(dialog) {
+  if (!dialog.querySelector(":scope > .sheet-grabber")) dialog.insertAdjacentHTML("afterbegin", '<div class="sheet-grabber" aria-hidden="true"></div>');
+  dialog.style.transform = ""; dialog.classList.remove("sheet-closing");
+  if (dialog.dataset.sheet) return;
+  dialog.dataset.sheet = "1";
+  const phone = matchMedia("(max-width: 600px)");
+  let drag = null;
+  const settle = (target, velocity, then) => {
+    const from = sheetY(dialog), distance = Math.abs(target - from);
+    dialog.getAnimations().forEach(a => a.cancel());
+    if (!distance) { then && then(); return; }
+    const speed = Math.max(Math.abs(velocity), 0.6); // px per ms
+    const duration = Math.min(450, Math.max(180, 2.25 * distance / speed));
+    dialog.style.transform = `translateY(${from}px)`;
+    const run = dialog.animate([{ transform: `translateY(${from}px)` }, { transform: `translateY(${target}px)` }], { duration, easing: SHEET_EASE, fill: "forwards" });
+    run.onfinish = () => { dialog.style.transform = `translateY(${target}px)`; run.cancel(); then && then(); };
+  };
+  dialog.addEventListener("pointerdown", event => {
+    if (!phone.matches || event.button > 0) return;
+    if (!event.target.closest(".sheet-grabber, .payment-modal-header") || event.target.closest("button, a, input, select, textarea")) return;
+    const current = sheetY(dialog);
+    dialog.getAnimations().forEach(a => a.cancel());
+    dialog.style.transform = `translateY(${current}px)`; // grab it where it is, even mid-animation
+    drag = { id: event.pointerId, offset: event.clientY - current, height: dialog.getBoundingClientRect().height, history: [{ y: event.clientY, t: event.timeStamp }] };
+    try { dialog.setPointerCapture(event.pointerId); } catch {}
+    dialog.classList.add("dragging");
+  });
+  dialog.addEventListener("pointermove", event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    let y = event.clientY - drag.offset;
+    if (y < 0) y = -rubberband(-y, drag.height);
+    dialog.style.transform = `translateY(${y}px)`;
+    drag.history.push({ y: event.clientY, t: event.timeStamp });
+    if (drag.history.length > 6) drag.history.shift();
+  });
+  const release = event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const { history, height } = drag; drag = null;
+    dialog.classList.remove("dragging");
+    const first = history[0], last = history[history.length - 1];
+    const velocity = last.t > first.t ? (last.y - first.y) / (last.t - first.t) : 0;
+    const y = sheetY(dialog), projected = y + projectFlick(velocity);
+    if (velocity > 0.5 || projected > height * 0.5) {
+      settle(height + 24, velocity, () => { dialog.classList.add("sheet-closing"); dialog.close(); requestAnimationFrame(() => { dialog.style.transform = ""; dialog.classList.remove("sheet-closing"); }); });
+    } else settle(0, velocity, () => { dialog.style.transform = ""; });
+  };
+  dialog.addEventListener("pointerup", release);
+  dialog.addEventListener("pointercancel", release);
+}

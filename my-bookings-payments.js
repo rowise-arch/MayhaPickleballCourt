@@ -41,6 +41,7 @@ function openPayment(b) {
     preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; preview.classList.add("hidden"); preview.innerHTML = ""; };
   };
   submit.onclick = () => submitPayment(b);
+  prepareSheet(dialog);
   dialog.showModal();
   watchHold(b);
 }
@@ -95,6 +96,7 @@ async function submitPayment(b) {
     if (result.outcome === "noHold") { error.textContent = "Your hold ran out and you already have 2 other unpaid holds. Cancel one, then submit again."; error.classList.remove("hidden"); return; }
     if (result.outcome === "cancelled") { error.textContent = "This booking was cancelled, so we can't take a payment for it."; error.classList.remove("hidden"); return; }
     clearInterval(holdWatch); setPayAlert("", "", b);
+    if (result.outcome !== "lost") haptic();
     const done = $("#pay-done");
     if (result.outcome === "lost") { done.querySelector("strong").textContent = "Slot was taken"; done.querySelector("p").textContent = `Your hold ran out and someone else booked this time before your payment came through. We've saved your reference, and staff will refund ${peso(b.totalPrice)}.`; }
     else { done.querySelector("strong").textContent = "Payment sent"; done.querySelector("p").textContent = `Staff will check it and confirm by ${new Date(result.reviewExpiresAt).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}.`; }

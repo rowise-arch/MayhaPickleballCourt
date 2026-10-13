@@ -210,14 +210,29 @@ function initials(text) {
   const picked = words.length > 1 ? [words[0], words[words.length - 1]] : [words[0] || "A"];
   return picked.map(word => Array.from(word)[0]).join("").toUpperCase();
 }
-function showBookingError(message, withLink = false) { const box = document.querySelector("#booking-error"); box.textContent = message; if (withLink) box.insertAdjacentHTML("beforeend", ' <a href="./my-bookings.html">Open My bookings</a>'); box.classList.remove("hidden"); }
+function showBookingError(message, withLink = false) { const box = document.querySelector("#booking-error"); if (document.querySelector("#confirm-bar")?.classList.contains("show")) box.closest(".summary-card")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" }); box.textContent = message; if (withLink) box.insertAdjacentHTML("beforeend", ' <a href="./my-bookings.html">Open My bookings</a>'); box.classList.remove("hidden"); }
 function clearBookingError() { document.querySelector("#booking-error").classList.add("hidden"); document.querySelector("#phone-error").classList.add("hidden"); document.querySelector("#phone-field").classList.remove("invalid"); }
 function showPhoneError(message) {
   const field = document.querySelector("#phone-field"), error = document.querySelector("#phone-error");
   error.textContent = message; error.classList.remove("hidden"); field.classList.add("invalid");
   field.querySelector("input").focus();
 }
+/* Phones: a floating bar with the picked time, shown while the summary card is off screen. */
+let summaryOnScreen = false;
+function updateConfirmBar() {
+  const bar = document.querySelector("#confirm-bar"); if (!bar) return;
+  const show = !!selectedTime && !summaryOnScreen && !document.querySelector("#booking-dialog").open;
+  if (selectedTime) {
+    const day = new Date(`${dateInput.value}T12:00:00`).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" });
+    const duration = selectedDuration();
+    document.querySelector("#cb-title").textContent = `${selectedCourt} · ${day}`;
+    document.querySelector("#cb-sub").textContent = `${selectedTime.replace(":00", "")} – ${endTime(selectedTime, duration).replace(":00", "")} · ₱${bookingPrice(selectedTime, duration)}`;
+  }
+  bar.classList.toggle("show", show); bar.setAttribute("aria-hidden", String(!show));
+  document.body.classList.toggle("has-confirm-bar", show);
+}
 function updateSummary() {
+  queueMicrotask(updateConfirmBar);
   const empty = document.querySelector("#summary-empty"), details = document.querySelector("#summary-details");
   empty.classList.toggle("hidden", !!selectedTime); details.classList.toggle("hidden", !selectedTime);
   if (!selectedTime) return;
@@ -304,6 +319,7 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
     const keysForHold = reservedSlots.map(timeKey);
     if (db) await db.ref().update(holdUpdates(currentUser.uid, booking, courtKey(selectedCourt), keysForHold)); else reservedSlots.forEach(slot => demoBooked.add(`${selectedCourt}|${slot}`));
     activeReservation = { ...booking, slots: reservedSlots, courtKey: courtKey(selectedCourt), timeKeys: keysForHold };
+    haptic();
     openPaymentDialog(activeReservation);
     loadAvailability();
   }
@@ -311,7 +327,7 @@ document.querySelector("#book-btn").addEventListener("click", async () => {
   finally { button.disabled = false; button.innerHTML = "Confirm booking <span>→</span>"; }
 });
 function renderPaymentMethod() { const method = PAYMENT.methods.find(item => item.id === paymentMethodId); const holder = document.querySelector("#payment-method-details"); holder.innerHTML = `<img class="payment-qr" src="${method.qr}" alt="${method.label} QR code" /><strong>${method.accountName}</strong><span id="payment-number">${method.number}</span><button id="copy-payment-number" type="button">⧉ <span>Copy number</span></button><p>Scan the QR in your ${method.label} app, or send to the number above.</p>`; const qr = holder.querySelector("img"); qr.onerror = () => { qr.remove(); }; const copy = document.querySelector("#copy-payment-number"); copy.onclick = async () => { try { if (navigator.clipboard) await navigator.clipboard.writeText(method.number); else { const area=document.createElement("textarea"); area.value=method.number; document.body.append(area); area.select(); document.execCommand("copy"); area.remove(); } copy.querySelector("span").textContent = "Copied ✓"; setTimeout(() => copy.querySelector("span").textContent = "Copy number", 2000); } catch { } }; }
-function openPaymentDialog(reservation) { activeReservation = reservation; paymentMethodId = PAYMENT.methods[0].id; document.querySelector("#payment-court").textContent = reservation.court; document.querySelector("#payment-date").textContent = new Date(`${reservation.date}T12:00:00`).toLocaleDateString("en-PH", {weekday:"short",month:"short",day:"numeric"}); document.querySelector("#payment-time").textContent = `${reservation.startTime} – ${endTime(reservation.startTime, reservation.durationHours)}`; document.querySelector("#payment-amount").textContent = `₱${reservation.totalPrice}`; document.querySelector("#payment-reference").value = reservation.paymentReference || ""; document.querySelector("#payment-submitted").classList.add("hidden"); ["#payment-summary", ".payment-due", "#payment-tabs", ".payment-qr-card", "#payment-helper"].forEach(sel => document.querySelector(sel)?.classList.remove("hidden")); document.querySelectorAll("#payment-modal-body .payment-field").forEach(el => el.classList.remove("hidden")); document.querySelector("#submit-payment").classList.remove("hidden"); setPaymentAlert("", ""); document.querySelector("#payment-footer").classList.remove("hidden"); document.querySelector("#payment-tabs").innerHTML = PAYMENT.methods.map(method => `<button type="button" role="tab" aria-selected="${method.id === paymentMethodId}" class="${method.id === paymentMethodId ? "active" : ""}" data-method="${method.id}">${method.label}</button>`).join(""); document.querySelectorAll("#payment-tabs button").forEach(button => button.onclick = () => { paymentMethodId = button.dataset.method; document.querySelectorAll("#payment-tabs button").forEach(item => { const active = item === button; item.classList.toggle("active", active); item.setAttribute("aria-selected", active); }); renderPaymentMethod(); }); renderPaymentMethod(); updatePaymentHold(); updateSubmitState(); if (!document.querySelector("#booking-dialog").open) document.querySelector("#booking-dialog").showModal(); }
+function openPaymentDialog(reservation) { activeReservation = reservation; paymentMethodId = PAYMENT.methods[0].id; document.querySelector("#payment-court").textContent = reservation.court; document.querySelector("#payment-date").textContent = new Date(`${reservation.date}T12:00:00`).toLocaleDateString("en-PH", {weekday:"short",month:"short",day:"numeric"}); document.querySelector("#payment-time").textContent = `${reservation.startTime} – ${endTime(reservation.startTime, reservation.durationHours)}`; document.querySelector("#payment-amount").textContent = `₱${reservation.totalPrice}`; document.querySelector("#payment-reference").value = reservation.paymentReference || ""; document.querySelector("#payment-submitted").classList.add("hidden"); ["#payment-summary", ".payment-due", "#payment-tabs", ".payment-qr-card", "#payment-helper"].forEach(sel => document.querySelector(sel)?.classList.remove("hidden")); document.querySelectorAll("#payment-modal-body .payment-field").forEach(el => el.classList.remove("hidden")); document.querySelector("#submit-payment").classList.remove("hidden"); setPaymentAlert("", ""); document.querySelector("#payment-footer").classList.remove("hidden"); document.querySelector("#payment-tabs").innerHTML = PAYMENT.methods.map(method => `<button type="button" role="tab" aria-selected="${method.id === paymentMethodId}" class="${method.id === paymentMethodId ? "active" : ""}" data-method="${method.id}">${method.label}</button>`).join(""); document.querySelectorAll("#payment-tabs button").forEach(button => button.onclick = () => { paymentMethodId = button.dataset.method; document.querySelectorAll("#payment-tabs button").forEach(item => { const active = item === button; item.classList.toggle("active", active); item.setAttribute("aria-selected", active); }); renderPaymentMethod(); }); renderPaymentMethod(); updatePaymentHold(); updateSubmitState(); const sheet = document.querySelector("#booking-dialog"); prepareSheet(sheet); if (!sheet.open) sheet.showModal(); updateConfirmBar(); }
 function setPaymentAlert(kind, html) {
   const alert = document.querySelector("#payment-alert"), body = document.querySelector("#payment-modal-body");
   alert.className = `payment-alert ${kind || ""} ${kind ? "" : "hidden"}`; alert.innerHTML = html || "";
@@ -363,6 +379,7 @@ document.querySelector("#submit-payment").addEventListener("click", async () => 
       done.querySelector("strong").textContent = "Payment submitted";
       document.querySelector("#confirmation-text").textContent = `Staff will check your payment and confirm by ${new Date(result.reviewExpiresAt).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}. You'll see it in My bookings.`;
     }
+    if (result.outcome !== "lost") haptic();
     setPaymentAlert("", ""); updatePaymentHold();
     ["#payment-summary", ".payment-due", "#payment-tabs", ".payment-qr-card", "#payment-helper"].forEach(sel => document.querySelector(sel)?.classList.add("hidden"));
     document.querySelectorAll("#payment-modal-body .payment-field").forEach(el => el.classList.add("hidden"));
@@ -376,7 +393,15 @@ setInterval(updatePaymentHold, 1000);
 document.querySelector("#payment-reference").addEventListener("input", updateSubmitState);
 document.querySelector("#payment-reference").addEventListener("focus", event => event.target.scrollIntoView({ block:"center", behavior:"smooth" }));
 document.querySelector("#payment-proof").addEventListener("change", event => { const preview = document.querySelector("#proof-preview"), file = event.target.files[0]; if (!file) { preview.classList.add("hidden"); preview.innerHTML = ""; return; } if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) { document.querySelector("#payment-error").textContent = "Use a JPG or PNG image under 15 MB."; document.querySelector("#payment-error").classList.remove("hidden"); event.target.value = ""; return; } const url = URL.createObjectURL(file); preview.innerHTML = `<img src="${url}" alt="Selected screenshot" /><span>${file.name}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`; preview.classList.remove("hidden"); preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; preview.classList.add("hidden"); preview.innerHTML = ""; }; });
+function initConfirmBar() {
+  const card = document.querySelector(".summary-card");
+  if (card && "IntersectionObserver" in window) new IntersectionObserver(entries => { summaryOnScreen = entries[0].isIntersecting; updateConfirmBar(); }, { threshold: 0.35 }).observe(card);
+  document.querySelector("#cb-confirm")?.addEventListener("click", () => document.querySelector("#book-btn").click());
+  document.querySelector("#booking-dialog").addEventListener("close", updateConfirmBar);
+}
 function initSite() {
+  frostOnScroll(document.querySelector(".topbar"));
+  initConfirmBar();
   if (SITE.address) document.querySelector("#footer-address").textContent = SITE.address;
   document.querySelector("#footer-directions").href = mapsUrl();
   if (SITE.phone) { const link = document.querySelector("#footer-phone"); link.textContent = SITE.phone; link.href = `tel:${SITE.phone.replace(/[^\d+]/g, "")}`; link.classList.remove("hidden"); }

@@ -4,7 +4,7 @@ const config = { apiKey: "AIzaSyAVboExr93oDx_ClUFPp2fmcMGvOTTNbRo", authDomain: 
 const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(config), auth = app.auth(), db = app.database();
 const $ = selector => document.querySelector(selector);
 
-let user = null, bookings = [], stopListener = null, armedId = null, armTimer = null;
+let user = null, bookings = [], stopListener = null, pendingCancel = null;
 
 /* ---------- formatting ---------- */
 const safe = value => String(value ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
@@ -37,15 +37,24 @@ function initials(text) { const words = String(text).split("@")[0].trim().split(
 
 /* ---------- toast ---------- */
 let toastTimer;
-function toast(message, tone = "ok") { const el = $("#toast"); el.textContent = message; el.dataset.tone = tone; el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2800); }
+function hideToast() { $("#toast").classList.remove("show"); }
+/* toast("Saved") or toast("Booking cancelled", "ok", { label: "Undo", ms: 5000, onClick }) */
+function toast(message, tone = "ok", action = null) {
+  const el = $("#toast"); clearTimeout(toastTimer);
+  el.dataset.tone = tone; el.classList.toggle("has-action", !!action);
+  el.innerHTML = `<span>${safe(message)}</span>${action ? `<button type="button">${safe(action.label)}</button><i class="toast-progress" style="animation-duration:${action.ms}ms"></i>` : ""}`;
+  if (action) el.querySelector("button").onclick = () => { hideToast(); action.onClick(); };
+  el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+  toastTimer = setTimeout(hideToast, action ? action.ms : 2800);
+}
 
 /* ---------- cards ---------- */
 function upcomingCard(b) {
-  const [tone, label] = pill(b, true), pending = b.status === "pending_payment", armed = armedId === b.reservationId;
+  const [tone, label] = pill(b, true), pending = b.status === "pending_payment", cancelling = pendingCancel?.b.reservationId === b.reservationId;
   const canPay = pending && !b.proofSubmittedAt && Number(b.holdExpiresAt) > Date.now();
   const paid = b.paymentStatus === "paid";
-  return `<article class="bk" data-id="${safe(b.reservationId)}">
-    <div class="bk-top"><div><h3>${dayLabel(b.date)}</h3><p class="bk-sub">${timeRange(b.startTime, b.durationHours)} · ${safe(b.court)} · ${peso(b.totalPrice)}</p></div><span class="pill ${tone}">${label}</span></div>
+  return `<article class="bk ${cancelling ? "cancelling" : ""}" data-id="${safe(b.reservationId)}">
+    <div class="bk-top"><div><h3>${dayLabel(b.date)}</h3><p class="bk-sub">${timeRange(b.startTime, b.durationHours)} · ${safe(b.court)} · ${peso(b.totalPrice)}</p></div><span class="pill ${cancelling ? "cancelled" : tone}">${cancelling ? "Cancelling…" : label}</span></div>
     ${canPay ? `<p class="hold-pill" data-expires="${Number(b.holdExpiresAt)}">${holdText(b.holdExpiresAt)}</p>` : ""}
     ${pending && b.proofSubmittedAt ? `<p class="bk-info">Payment sent. Staff will confirm by ${clockTime(reviewEndsAt(b))}.</p>` : ""}
     ${b.paymentReference ? `<p class="bk-meta">${safe(methodName(b.paymentMethod))} ref <span class="mono">${safe(b.paymentReference)}</span>${paid ? " · Paid" : ""}</p>` : paid ? `<p class="bk-meta">Paid${b.paymentMethod ? ` · ${safe(methodName(b.paymentMethod))}` : ""}</p>` : ""}
@@ -54,9 +63,8 @@ function upcomingCard(b) {
       ${canPay ? `<button type="button" class="book-btn bk-pay" data-act="pay">Pay ${peso(b.totalPrice)}</button>` : ""}
       ${pending && b.proofSubmittedAt ? `<button type="button" class="bk-link" data-act="pay">Update payment details</button>` : ""}
       ${!canPay ? `<button type="button" class="bk-link" data-act="ics">Add to calendar</button><a class="bk-link" href="${mapsUrl()}" target="_blank" rel="noopener">Get directions</a>` : ""}
-      <button type="button" class="bk-cancel ${armed ? "armed" : ""}" data-act="cancel">${armed ? "Tap again to cancel" : "Cancel"}</button>
+      <button type="button" class="bk-cancel" data-act="cancel">Cancel</button>
     </div>
-    ${armed ? `<p class="bk-confirm">${paid ? "Your slot will be released. Staff will contact you about your refund." : "Your slot will be released for other players."}</p>` : ""}
   </article>`;
 }
 function pastCard(b) {
@@ -98,12 +106,23 @@ setInterval(() => {
   if (expiredNow) render();
 }, 1000);
 
-/* ---------- cancel (two taps) ---------- */
+/* ---------- cancel, with 5 seconds to undo ---------- */
 function slotKeysFor(b) { if (Array.isArray(b.timeKeys) && b.timeKeys.length) return b.timeKeys; const from = hourOf(b.startTime); return SLOT_TIMES.slice(from, from + Number(b.durationHours || 1)).map(slotKey); }
-async function cancelTap(b) {
-  if (armedId !== b.reservationId) { armedId = b.reservationId; clearTimeout(armTimer); armTimer = setTimeout(() => { armedId = null; render(); }, 5000); render(); return; }
-  clearTimeout(armTimer); armedId = null;
-  const updates = {}, ck = b.courtKey || b.court.toLowerCase().replace(" ", "-");
+const UNDO_MS = 5000;
+function cancelTap(b) {
+  if (pendingCancel) commitCancel(); // only one pending cancel at a time
+  pendingCancel = { b, timer: setTimeout(commitCancel, UNDO_MS) };
+  render();
+  const message = b.paymentStatus === "paid" ? "Booking cancelled. Staff will contact you about your refund." : "Booking cancelled";
+  toast(message, "ok", { label: "Undo", ms: UNDO_MS, onClick: () => { if (pendingCancel?.b.reservationId !== b.reservationId) return; clearTimeout(pendingCancel.timer); pendingCancel = null; render(); toast("Kept your booking"); } });
+}
+/* Leaving the page doesn't lose a cancel: it's sent right away. */
+addEventListener("pagehide", () => commitCancel());
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") commitCancel(); });
+async function commitCancel() {
+  const pending = pendingCancel; if (!pending) return;
+  pendingCancel = null; clearTimeout(pending.timer);
+  const b = pending.b, updates = {}, ck = b.courtKey || b.court.toLowerCase().replace(" ", "-");
   slotKeysFor(b).forEach(tk => { updates[`bookings/${b.date}/${ck}/${tk}/status`] = "cancelled"; updates[`availability/${b.date}/${ck}/${tk}/status`] = "cancelled"; });
   updates[`userBookings/${user.uid}/${b.reservationId}/status`] = "cancelled";
   try {
@@ -112,7 +131,7 @@ async function cancelTap(b) {
       const ticket = (await db.ref(`holdSlots/${user.uid}/${b.holdSlot}`).once("value")).val();
       if (ticket && ticket.rid === b.reservationId) updates[`holdSlots/${user.uid}/${b.holdSlot}`] = null;
     }
-    await db.ref().update(updates); toast("Booking cancelled");
+    await db.ref().update(updates);
   }
   catch (error) { console.error(error); toast("Couldn't cancel. Try again.", "error"); render(); }
 }
@@ -122,7 +141,7 @@ async function holdAgain(b, button) {
   button.disabled = true; button.textContent = "Checking…";
   try {
     const result = await reholdSafely(db, user.uid, b, b.courtKey || b.court.toLowerCase().replace(" ", "-"), slotKeysFor(b), user.displayName || user.email);
-    if (result.outcome === "reheld" || result.outcome === "held") toast("Held again for 30 minutes");
+    if (result.outcome === "reheld" || result.outcome === "held") { haptic(); toast("Held again for 30 minutes"); }
     else if (result.outcome === "noHold") toast("You already have 2 unpaid holds. Pay for or cancel one first.", "error");
     else toast("Someone else booked this time. Pick another slot.", "error");
   } catch (error) { console.error(error); toast("Couldn't hold it again. Try again.", "error"); }
@@ -160,3 +179,5 @@ auth.onAuthStateChanged(current => {
   ref.on("value", onValue, error => { console.error(error); $("#loading").classList.add("hidden"); toast("Couldn't load your bookings. Try refreshing.", "error"); });
   stopListener = () => ref.off("value", onValue);
 });
+
+frostOnScroll(document.querySelector(".mb-bar"));
