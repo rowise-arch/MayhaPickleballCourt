@@ -87,6 +87,7 @@ async function connectFirebase() {
     auth.onAuthStateChanged(user => {
       currentUser = user;
       isAdmin = false;
+      if (user) { rememberSignedIn(); setAuthMode(false); }
       updateAccountUi();
       if (user) {
         loadAvailability();
@@ -120,11 +121,19 @@ function showAccountDialog() {
   const dialog = document.querySelector("#account-dialog");
   if (!dialog.open) dialog.showModal();
 }
+/* "Welcome back" only on a phone or computer where this person has signed in before; first-timers see "Sign in".
+   Remembered in this browser only. If storage is blocked, everyone just sees "Sign in". */
+const SIGNED_IN_BEFORE = "mayha-signed-in-before";
+function hasSignedInBefore() { try { return localStorage.getItem(SIGNED_IN_BEFORE) === "1"; } catch { return false; } }
+function rememberSignedIn() { try { localStorage.setItem(SIGNED_IN_BEFORE, "1"); } catch {} }
 function setAuthMode(register) {
   creatingAccount = register;
-  document.querySelector("#auth-title").textContent = register ? "Create your account" : "Welcome back";
-  document.querySelector("#auth-intro").textContent = register ? "Save your bookings and get ready to play." : "Sign in to manage your court bookings.";
+  const returning = hasSignedInBefore();
+  document.querySelector("#auth-title").textContent = register ? "Create your account" : returning ? "Welcome back" : "Sign in";
+  document.querySelector("#auth-intro").textContent = register ? "Save your bookings and get ready to play." : returning ? "Sign in to manage your court bookings." : "Sign in to book courts and see your bookings.";
   document.querySelector("#name-field").classList.toggle("hidden", !register);
+  document.querySelector("#auth-forgot").classList.toggle("hidden", register);
+  document.querySelector("#auth-error").classList.add("hidden");
   document.querySelector("#auth-password").autocomplete = register ? "new-password" : "current-password";
   document.querySelector("#auth-submit").textContent = register ? "Create account" : "Sign in";
   document.querySelector("#auth-switch").innerHTML = register ? "Already have an account? <button type=\"button\" id=\"switch-auth\">Sign in</button>" : "New to Mayha Square Pickleball Court? <button type=\"button\" id=\"switch-auth\">Create an account</button>";
@@ -274,11 +283,22 @@ document.querySelector("#account-btn").addEventListener("click", showAccountDial
 document.querySelector("#auth-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
 document.querySelector("#account-close").addEventListener("click", () => document.querySelector("#account-dialog").close());
 document.querySelector("#sign-out-btn").addEventListener("click", () => auth.signOut().then(() => document.querySelector("#account-dialog").close()));
+/* Forgot password: Firebase emails a reset link. The message is the same whether or not the account exists. */
+document.querySelector("#auth-forgot").addEventListener("click", async () => {
+  const box = document.querySelector("#auth-error"), button = document.querySelector("#auth-forgot"), email = document.querySelector("#auth-email").value.trim();
+  const say = (text, ok) => { box.textContent = text; box.classList.toggle("auth-ok", !!ok); box.classList.remove("hidden"); };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("Type your email address above first, then tap Forgot password."); document.querySelector("#auth-email").focus(); return; }
+  if (!auth) { say("Firebase is unavailable. Check your internet connection and try again."); return; }
+  button.disabled = true; button.textContent = "Sending…";
+  try { await auth.sendPasswordResetEmail(email); say(`If there's an account for ${email}, we've sent a link to reset your password. Check your spam folder too.`, true); }
+  catch (error) { if (error.code === "auth/user-not-found") say(`If there's an account for ${email}, we've sent a link to reset your password. Check your spam folder too.`, true); else say(error.code === "auth/too-many-requests" ? "Too many tries. Wait a few minutes, then try again." : error.code === "auth/invalid-email" ? "Enter a valid email address." : "We couldn't send the email. Please try again."); }
+  finally { button.disabled = false; button.textContent = "Forgot password?"; }
+});
 document.querySelector("#auth-form").addEventListener("submit", async event => {
   event.preventDefault();
   const errorBox = document.querySelector("#auth-error");
   const submit = document.querySelector("#auth-submit");
-  errorBox.classList.add("hidden");
+  errorBox.classList.add("hidden"); errorBox.classList.remove("auth-ok");
   if (!auth) { errorBox.textContent = "Firebase is unavailable. Check your internet connection and try again."; errorBox.classList.remove("hidden"); return; }
   submit.disabled = true;
   try {
@@ -379,6 +399,7 @@ document.querySelector("#submit-payment").addEventListener("click", async () => 
       done.querySelector("strong").textContent = "Payment submitted";
       document.querySelector("#confirmation-text").textContent = `Staff will check your payment and confirm by ${new Date(result.reviewExpiresAt).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}. You'll see it in My bookings.`;
     }
+    document.querySelector("#add-calendar").classList.toggle("hidden", result.outcome === "lost");
     if (result.outcome !== "lost") haptic();
     setPaymentAlert("", ""); updatePaymentHold();
     ["#payment-summary", ".payment-due", "#payment-tabs", ".payment-qr-card", "#payment-helper"].forEach(sel => document.querySelector(sel)?.classList.add("hidden"));
@@ -391,6 +412,7 @@ document.querySelector("#dialog-close").addEventListener("click", () => document
 document.querySelector("#done-btn").addEventListener("click", () => document.querySelector("#booking-dialog").close());
 setInterval(updatePaymentHold, 1000);
 document.querySelector("#payment-reference").addEventListener("input", updateSubmitState);
+document.querySelector("#add-calendar").addEventListener("click", () => { if (activeReservation) addToCalendar(activeReservation); });
 document.querySelector("#payment-reference").addEventListener("focus", event => event.target.scrollIntoView({ block:"center", behavior:"smooth" }));
 document.querySelector("#payment-proof").addEventListener("change", event => { const preview = document.querySelector("#proof-preview"), file = event.target.files[0]; if (!file) { preview.classList.add("hidden"); preview.innerHTML = ""; return; } if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) { document.querySelector("#payment-error").textContent = "Use a JPG or PNG image under 15 MB."; document.querySelector("#payment-error").classList.remove("hidden"); event.target.value = ""; return; } const url = URL.createObjectURL(file); preview.innerHTML = `<img src="${url}" alt="Selected screenshot" /><span>${file.name}<small>${Math.ceil(file.size / 1024)} KB</small></span><button type="button">Remove</button>`; preview.classList.remove("hidden"); preview.querySelector("button").onclick = () => { URL.revokeObjectURL(url); event.target.value = ""; receiptReader.reset(); preview.classList.add("hidden"); preview.innerHTML = ""; }; });
 var receiptReader = attachReceiptReader({ fileInput: document.querySelector("#payment-proof"), refInput: document.querySelector("#payment-reference"), note: document.querySelector("#receipt-note"), expectedAmount: () => activeReservation?.totalPrice });

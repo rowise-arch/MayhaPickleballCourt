@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-  <meta name="theme-color" content="#f3f8fc">
+  <meta name="theme-color" content="#f3f8fc" media="(prefers-color-scheme: light)">
+  <link rel="manifest" href="./site.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="Mayha Square">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#101826" media="(prefers-color-scheme: dark)">
+  <meta name="robots" content="noindex">
   <title>Admin — Mayha Square Pickleball Court</title>
   <link rel="icon" href="./mayha-logo-64.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,6 +42,7 @@
           <h1 id="date-title">Today</h1>
           <label class="date-picker"><span class="sr-only">Pick a date</span><input type="date" id="filter-date"></label>
         </div>
+        <div class="toolbar-right">
         <label class="filter"><span>Show</span>
           <select id="filter-status">
             <option value="all">All bookings</option>
@@ -45,6 +53,8 @@
             <option value="no_show">No show</option>
           </select>
         </label>
+        <button type="button" class="ghost" id="export-btn">Export CSV</button>
+        </div>
       </div>
 
       <div class="metrics">
@@ -57,7 +67,7 @@
       <div class="work">
         <section class="card calendar-card">
           <div class="card-head"><h2>Courts</h2><div class="legend"><span class="lg pending">Awaiting payment</span><span class="lg confirmed">Confirmed</span><span class="lg checked_in">Checked in</span><span class="lg blocked">Blocked</span></div></div>
-          <p class="hint">Tap an empty slot to add a walk-in.</p>
+          <p class="hint">Tap an empty slot to add a walk-in, or drag down across slots to pick the length. On a phone, press and hold, then drag.</p>
           <div class="calendar-scroll" id="calendar-scroll"><div class="calendar" id="calendar"></div></div>
         </section>
 
@@ -78,6 +88,7 @@
               <label>Hours<select id="walkin-hours"><option value="1">1 hour</option><option value="2" selected>2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
               <label>Payment<select id="walkin-payment"><option value="unpaid">Not paid yet</option><option value="cash">Paid · Cash</option><option value="gcash">Paid · GCash</option><option value="maya">Paid · Maya</option></select></label>
             </div>
+            <label>Repeat<select id="walkin-repeat"><option value="1">Just this day</option><option value="4">Every week · 4 weeks</option><option value="8">Every week · 8 weeks</option><option value="12">Every week · 12 weeks</option></select><small class="field-hint hidden" id="walkin-repeat-hint"></small></label>
             <label>Total<input id="walkin-price" type="number" min="0" inputmode="numeric" placeholder="₱0"><small class="field-hint" id="walkin-price-hint"></small></label>
             <label>Note<input id="walkin-note" autocomplete="off" placeholder="Optional"></label>
             <p class="form-error hidden" id="walkin-error" role="alert"></p>

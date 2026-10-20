@@ -89,7 +89,7 @@ function render() {
     const b = bookings.find(x => x.reservationId === el.closest(".bk").dataset.id);
     if (el.dataset.act === "pay") openPayment(b);
     if (el.dataset.act === "cancel") cancelTap(b);
-    if (el.dataset.act === "ics") downloadIcs(b);
+    if (el.dataset.act === "ics") addToCalendar(b);
     if (el.dataset.act === "rehold") holdAgain(b, el);
   });
 }
@@ -149,13 +149,6 @@ async function holdAgain(b, button) {
 }
 
 /* ---------- calendar file ---------- */
-function downloadIcs(b) {
-  const stamp = date => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Mayha Square Pickleball Court//Booking//EN", "BEGIN:VEVENT", `UID:${b.reservationId}@mayha-courts`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(startsAt(b))}`, `DTEND:${stamp(endsAt(b))}`, `SUMMARY:Pickleball · ${b.court}`, `LOCATION:${(SITE.address || SITE.mapsQuery).replace(/,/g, "\\,")}`, `DESCRIPTION:Mayha Square Pickleball Court booking · ${peso(b.totalPrice).replace("₱", "PHP ")}`, "END:VEVENT", "END:VCALENDAR"];
-  const url = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/calendar" }));
-  const link = Object.assign(document.createElement("a"), { href: url, download: `mayha-${b.court.toLowerCase().replace(" ", "-")}-${b.date}.ics` });
-  document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
 
 /* ---------- account ---------- */
 $("#account-btn").onclick = () => $("#account-dialog").showModal();

@@ -295,6 +295,25 @@ function attachReceiptReader({ fileInput, refInput, note, expectedAmount }) {
   return { reset };
 }
 
+/* ---------- add a booking to the customer's calendar ----------
+   Android opens Google Calendar with the details filled in; iPhone, Mac and Windows get an .ics file,
+   which opens straight in their calendar app. The .ics also sets a reminder one hour before. */
+function addToCalendar(b) {
+  const start = startTimestamp(b.date, b.startTime || b.time), end = start + Number(b.durationHours || 1) * HOUR_MS;
+  const stamp = ms => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const where = SITE.address || SITE.mapsQuery, title = `Pickleball · ${b.court}`;
+  const details = `Mayha Square Pickleball Court · ${b.court} · ₱${Number(b.totalPrice || 0).toLocaleString("en-PH")}\nYour bookings: ${location.origin}/my-bookings.html`;
+  if (/Android/i.test(navigator.userAgent)) {
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${stamp(start)}/${stamp(end)}&location=${encodeURIComponent(where)}&details=${encodeURIComponent(details)}`;
+    window.open(url, "_blank", "noopener"); return;
+  }
+  const esc = text => String(text).replace(/\\/g, "\\\\").replace(/[,;]/g, m => "\\" + m).replace(/\n/g, "\\n");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Mayha Square Pickleball Court//Booking//EN", "BEGIN:VEVENT", `UID:${b.reservationId}@mayha-square`, `DTSTAMP:${stamp(Date.now())}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`, `SUMMARY:${esc(title)}`, `LOCATION:${esc(where)}`, `DESCRIPTION:${esc(details)}`, "BEGIN:VALARM", "TRIGGER:-PT1H", "ACTION:DISPLAY", `DESCRIPTION:${esc(title)} in 1 hour`, "END:VALARM", "END:VEVENT", "END:VCALENDAR"];
+  const url = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: `mayha-${String(b.court).toLowerCase().replace(/\s+/g, "-")}-${b.date}.ics` });
+  document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
 /* ---------- interface helpers shared by the booking page and My Bookings ---------- */
 /* A short buzz on success. Android only; iPhone browsers ignore it. Used only when a hold or payment goes through. */
 function haptic() { try { navigator.vibrate?.(12); } catch {} }

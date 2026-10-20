@@ -125,6 +125,8 @@ Screenshots are saved in the Realtime Database under `paymentProofs`, not Fireba
 
 If saving a screenshot fails or takes longer than 15 seconds, the reference number is still sent.
 
+When a customer picks a screenshot, the page reads it on their phone (with Tesseract.js, loaded from a CDN only at that moment, about 7 MB the first time) and fills in the reference number. It never overwrites a reference the customer typed, and it warns them if the amount on the receipt doesn't match the booking. This is a convenience for customers, not a check: screenshots can be edited, so staff still confirm the payment in the GCash or Maya app.
+
 You no longer need Firebase Storage. If you published Storage rules earlier, you can leave them; the site doesn't use Storage any more.
 
 ### Rules Playground tests
@@ -133,10 +135,25 @@ In Realtime Database **Rules → Rules Playground**, simulate a signed-in normal
 
 ## Operations pages
 
+- `index.html` is the booking page. The sign-in dialog has **Forgot password?**, which sends Firebase's password reset email (Authentication → Templates controls its wording, if your project allows editing). After paying, customers can tap **Add to calendar**.
 - `my-bookings.html` shows a signed-in customer their upcoming and past bookings, lets them pay or update payment details for a held booking, cancel, add a booking to their calendar, and get directions.
-- `admin.html` is the staff dashboard: a four-court calendar (tap an empty slot to add a walk-in), walk-ins and court blocks in the side panel, payment review with a Needs action group, and daily metrics. `staff-tools.html` now forwards to it.
+- `admin.html` is the staff dashboard:
+  - a four-court calendar. Tap an empty slot to add a walk-in, or drag down across empty slots to pick the length (on a phone, press and hold first). With the **Block court** tab open, the drag fills in a block instead;
+  - walk-ins, with **Repeat** for groups who play the same slot every week (4, 8 or 12 weeks). Weeks where the court is already booked or blocked are skipped and listed;
+  - court blocks, payment review with a Needs action group, daily metrics and **Payments to resolve**;
+  - a warning when a payment reference was already used on another booking, on any day (spaces and dashes are ignored);
+  - **Export CSV**: every booking between two dates, with a paid total, for Excel or Google Sheets.
+- `staff-tools.html` forwards to `admin.html`.
 
-After this update, publish the rules above again. The `blocks` rule is required for the court-maintenance controls. The court-level booking write permission is necessary because the browser performs one atomic transaction to reserve a multi-hour schedule. Before public launch, move booking creation to a Cloud Function so the server can enforce owner-level permissions while retaining atomic multi-hour reservations.
+All three pages switch to dark mode when the phone or computer is set to dark.
+
+Walk-ins are written one hour at a time, which is what the rules above allow. The app checks the hours are free just before writing; before a public launch with heavy traffic, consider moving booking creation to a Cloud Function so the server can reserve multi-hour slots atomically.
+
+### Facebook previews and the home screen
+
+`share-image.jpg` is the picture shown when someone shares the site on Facebook, Messenger or Viber. The tags in the `<head>` of `index.html` point at `https://mayha-pickleball-court.vercel.app`; if you move to your own domain, change the two URLs there. Facebook caches previews: after changing them, paste the link into Facebook's Sharing Debugger and press **Scrape Again**.
+
+`site.webmanifest`, `icon-192.png` and `icon-512.png` let customers add the site to their home screen (Chrome: menu → **Add to Home screen**; iPhone Safari: Share → **Add to Home Screen**). It opens full screen with your logo.
 
 ## Give an account administrator access
 

@@ -37,6 +37,22 @@ const statusClass = b => b.status === "pending_payment" ? (b.proofSubmittedAt ? 
 function currentHourFraction() { const now = new Date(); return now.getHours() + now.getMinutes() / 60; }
 function pastState(hour) { const today = localDate(); if (dateInput.value < today) return true; if (dateInput.value > today) return false; return hour + 1 <= currentHourFraction(); }
 
+/* Other bookings, on any day, that were paid with the same reference number. Spaces and dashes don't count,
+   so "7045 629 405131" and "7045629405131" match. Uses the payment log (every submitted payment) plus today's rows. */
+const normRef = value => String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+function refUses(b) {
+  const key = normRef(b.paymentReference); if (key.length < 6) return [];
+  const seen = new Map();
+  Object.entries(paymentLog || {}).forEach(([rid, e]) => { if (rid !== b.reservationId && normRef(e.reference) === key) seen.set(rid, { date: e.date, court: e.court, startTime: e.startTime, state: e.state }); });
+  reservations().forEach(x => { if (x.reservationId !== b.reservationId && normRef(x.paymentReference) === key && !seen.has(x.reservationId)) seen.set(x.reservationId, { date: x.date, court: x.court, startTime: x.startTime || x.time, state: x.status }); });
+  return [...seen.values()];
+}
+function refUsesText(uses) {
+  const u = uses[0], when = asDate(u.date).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" });
+  const state = { rejected: " (rejected)", refunded: " (refunded)", dismissed: " (dismissed)", cancelled: " (cancelled)" }[u.state] || "";
+  return `Reference also used on ${u.court} · ${when}${u.startTime ? ` · ${String(u.startTime).replace(":00", "")}` : ""}${state}${uses.length > 1 ? ` and ${uses.length - 1} more` : ""}`;
+}
+
 /* All rows for the day, flattened. One entry per hour row. */
 function hourRows() {
   const out = [];
@@ -91,13 +107,13 @@ function toast(message, tone = "ok") {
 function staffModal({ title, message = "", details = "", confirm = "Confirm", tone = "primary", askReason = false, reasonLabel = "Reason", cancel = "Cancel" }) {
   return new Promise(resolve => {
     const modal = $("#staff-modal");
-    modal.innerHTML = `<h2>${safe(title)}</h2>${message ? `<p>${safe(message)}</p>` : ""}${details}${askReason ? `<label class="modal-reason">${safe(reasonLabel)}<textarea rows="2" placeholder="Optional"></textarea></label>` : ""}<div class="modal-actions"><button type="button" class="btn ghost" data-act="no">${safe(cancel)}</button><button type="button" class="btn ${tone}" data-act="yes">${safe(confirm)}</button></div>`;
+    modal.innerHTML = `<h2>${safe(title)}</h2>${message ? `<p>${safe(message)}</p>` : ""}${details}${askReason ? `<label class="modal-reason">${safe(reasonLabel)}<textarea rows="2" placeholder="Optional"></textarea></label>` : ""}<div class="modal-actions">${cancel ? `<button type="button" class="btn ghost" data-act="no">${safe(cancel)}</button>` : ""}<button type="button" class="btn ${tone}" data-act="yes">${safe(confirm)}</button></div>`;
     const finish = ok => { const reason = modal.querySelector("textarea")?.value.trim() || ""; modal.close(); resolve({ ok, reason }); };
     modal.querySelector('[data-act="yes"]').onclick = () => finish(true);
-    modal.querySelector('[data-act="no"]').onclick = () => finish(false);
+    const no = modal.querySelector('[data-act="no"]'); if (no) no.onclick = () => finish(false);
     modal.oncancel = event => { event.preventDefault(); finish(false); };
     modal.showModal();
-    (modal.querySelector("textarea") || modal.querySelector('[data-act="yes"]')).focus();
+    (modal.querySelector("textarea") || modal.querySelector("[data-focus]") || modal.querySelector('[data-act="yes"]')).focus();
   });
 }
 
@@ -108,7 +124,7 @@ function setDate(value) {
   const pretty = asDate(value).toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric" });
   $("#date-title").innerHTML = label ? `${label} <span>${pretty}</span>` : pretty;
   $("#today-btn").disabled = value === today;
-  if ($("#walkin-time").options.length) updateWalkinPrice();
+  if ($("#walkin-time").options.length) { updateWalkinPrice(); updateRepeatHint(); }
   subscribe();
 }
 function shiftDate(days) { setDate(localDate(days, asDate(dateInput.value))); }
@@ -201,7 +217,7 @@ function focusRow(id) {
 
 /* ---------- reservation list ---------- */
 function rowHtml(b, all) {
-  const duplicate = b.paymentReference && all.some(x => x.reservationId !== b.reservationId && x.paymentReference === b.paymentReference);
+  const uses = refUses(b), duplicate = uses.length > 0;
   const pending = b.status === "pending_payment";
   const actions = pending
     ? `<div class="row-actions"><button type="button" class="btn primary small" data-act="paid" data-id="${safe(b.reservationId)}">Mark as paid</button><button type="button" class="btn ghost small" data-act="reject" data-id="${safe(b.reservationId)}">Reject</button></div>`
@@ -211,9 +227,9 @@ function rowHtml(b, all) {
     <div class="row-time"><b>${safe((b.startTime || b.time).replace(":00", ""))}</b><span>${safe(b.durationHours || 1)} hr · ${peso(b.totalPrice)}</span></div>
     <div class="row-main">
       <div class="row-title">${safe(b.ownerName || "Customer")} <span class="muted">· ${safe(b.court)}</span></div>
-      <div class="row-meta">${b.contactPhone ? `<a href="tel:${safe(String(b.contactPhone).replace(/[^\d+]/g, ""))}">${safe(b.contactPhone)}</a>` : "No contact"}${b.paymentReference ? `${b.paymentMethod ? ` · ${safe(methodName(b.paymentMethod))}` : ""} · Ref <span class="mono">${safe(b.paymentReference)}</span>` : ""}${b.staffCreated ? " · Walk-in" : ""}</div>
+      <div class="row-meta">${b.contactPhone ? `<a href="tel:${safe(String(b.contactPhone).replace(/[^\d+]/g, ""))}">${safe(b.contactPhone)}</a>` : "No contact"}${b.paymentReference ? `${b.paymentMethod ? ` · ${safe(methodName(b.paymentMethod))}` : ""} · Ref <span class="mono">${safe(b.paymentReference)}</span>` : ""}${b.staffCreated ? " · Walk-in" : ""}${b.seriesWeeks ? ` · Weekly ${safe(b.seriesWeek)}/${safe(b.seriesWeeks)}` : ""}</div>
       ${b.note ? `<div class="row-note">${safe(b.note)}</div>` : ""}
-      ${duplicate ? `<span class="badge danger">Reference used on another booking</span>` : ""}
+      ${duplicate ? `<span class="badge danger">${safe(refUsesText(uses))}</span>` : ""}
       ${priceMismatch(b) && b.status !== "cancelled" ? `<span class="badge danger">Amount doesn't match rates · should be ${peso(expectedPrice(b.date, b.startTime || b.time, b.durationHours || 1))}</span>` : ""}
       ${pending && b.proofSubmittedAt && !reviewTimedOut(b) ? `<div class="row-note">Slot auto-releases at ${clockTime(reviewEndsAt(b))} if not confirmed</div>` : ""}
       ${reviewTimedOut(b) ? `<span class="badge danger">Not reviewed in time · slot released</span>` : ""}
@@ -227,7 +243,7 @@ function rowHtml(b, all) {
 function renderList(list) {
   const filter = $("#filter-status").value;
   const visible = list.filter(b => !isExpired(b) && (filter === "all" || b.status === filter)).sort((a, b) => SLOTS.indexOf(a.startTime || a.time) - SLOTS.indexOf(b.startTime || b.time));
-  const dup = b => b.paymentReference && list.some(x => x.reservationId !== b.reservationId && x.paymentReference === b.paymentReference);
+  const dup = b => refUses(b).length > 0;
   const needs = visible.filter(b => (b.status === "pending_payment" && b.proofSubmittedAt) || (b.status !== "cancelled" && (dup(b) || priceMismatch(b))));
   const rest = visible.filter(b => !needs.includes(b));
   const expiredCount = list.filter(isExpired).length;
@@ -297,8 +313,9 @@ async function updateReservation(booking, fields) {
 async function markPaid(b) {
   if (!b) return;
   const expected = expectedPrice(b.date, b.startTime || b.time, b.durationHours || 1), wrong = priceMismatch(b);
-  const details = `${wrong ? `<p class="modal-warning">This booking says ${peso(b.totalPrice)}, but your rates for this time come to ${peso(expected)}. Check you received ${peso(expected)} before confirming.</p>` : ""}${reviewTimedOut(b) ? `<p class="modal-warning">This review timed out and the slot was released. Confirming takes it back, if nobody else has booked it.</p>` : ""}<dl class="modal-details"><dt>Amount</dt><dd>${peso(b.totalPrice)}</dd>${wrong ? `<dt>Rates say</dt><dd>${peso(expected)}</dd>` : ""}<dt>Method</dt><dd>${safe(methodName(b.paymentMethod) || "Not given")}</dd><dt>Reference</dt><dd class="mono">${safe(b.paymentReference || "Not submitted")}</dd><dt>Customer</dt><dd>${safe(b.ownerName || "Customer")}</dd></dl>`;
-  const { ok } = await staffModal({ title: "Mark as paid?", message: "Only confirm once you've seen this payment in your own GCash or Maya app.", details, confirm: wrong ? "Mark paid anyway" : `Mark ${peso(b.totalPrice)} paid`, tone: wrong ? "danger" : "primary" });
+  const uses = refUses(b);
+  const details = `${uses.length ? `<p class="modal-warning">${safe(refUsesText(uses))}. Check this is a new payment before confirming.</p>` : ""}${wrong ? `<p class="modal-warning">This booking says ${peso(b.totalPrice)}, but your rates for this time come to ${peso(expected)}. Check you received ${peso(expected)} before confirming.</p>` : ""}${reviewTimedOut(b) ? `<p class="modal-warning">This review timed out and the slot was released. Confirming takes it back, if nobody else has booked it.</p>` : ""}<dl class="modal-details"><dt>Amount</dt><dd>${peso(b.totalPrice)}</dd>${wrong ? `<dt>Rates say</dt><dd>${peso(expected)}</dd>` : ""}<dt>Method</dt><dd>${safe(methodName(b.paymentMethod) || "Not given")}</dd><dt>Reference</dt><dd class="mono">${safe(b.paymentReference || "Not submitted")}</dd><dt>Customer</dt><dd>${safe(b.ownerName || "Customer")}</dd></dl>`;
+  const { ok } = await staffModal({ title: "Mark as paid?", message: "Only confirm once you've seen this payment in your own GCash or Maya app.", details, confirm: wrong || uses.length ? "Mark paid anyway" : `Mark ${peso(b.totalPrice)} paid`, tone: wrong || uses.length ? "danger" : "primary" });
   if (!ok) return;
   try { await updateReservation(b, { status: "confirmed", paymentStatus: "paid", paidAt: Date.now(), verifiedBy: auth.currentUser.email }); toast(`Marked as paid · ${b.ownerName || "Customer"}`); }
   catch (error) { console.error(error); toast("Couldn't save. Try again.", "error"); }
@@ -329,12 +346,76 @@ function updateWalkinPrice() {
   input.placeholder = peso(total);
   $("#walkin-price-hint").textContent = `Standard rate ${peso(total)}. Type a different amount for promos.`;
 }
-function prefillWalkin(court, time) {
-  showTab("walkin");
-  $("#walkin-court").value = court; $("#walkin-time").value = time; updateWalkinPrice(); hideError("#walkin-error");
+function pulsePanel() {
   const panel = $("#tools"); panel.classList.remove("pulse"); void panel.offsetWidth; panel.classList.add("pulse");
-  if (matchMedia("(max-width: 980px)").matches) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (matchMedia("(max-width: 980px)").matches) panel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+function prefillWalkin(court, time, hours) {
+  showTab("walkin");
+  $("#walkin-court").value = court; $("#walkin-time").value = time; if (hours) $("#walkin-hours").value = String(hours);
+  updateWalkinPrice(); updateRepeatHint(); hideError("#walkin-error"); pulsePanel();
   $("#walkin-name").focus({ preventScroll: true });
+}
+function prefillBlock(court, time, hours) {
+  showTab("block");
+  $("#block-court").value = court; $("#block-time").value = time; $("#block-hours").value = String(hours || 1);
+  hideError("#block-error"); pulsePanel();
+  $("#block-reason").focus({ preventScroll: true });
+}
+
+/* ---------- calendar: drag across empty slots to pick a length ----------
+   Mouse and pen drag straight away. On a touchscreen, press and hold a slot, then drag, so scrolling still works.
+   The selection stays on one court, stops at the next booking or block, and is at most 4 hours. */
+function initCalendarDrag() {
+  const cal = $("#calendar"), MAX = 4;
+  let drag = null, pending = null, suppressClick = false;
+  const free = (court, h) => h >= 0 && h < 24 && !!cal.querySelector(`button.cal-slot[data-court="${court}"][data-time="${SLOTS[h]}"]`);
+  const hourAt = y => Math.floor((y - cal.getBoundingClientRect().top - HEAD_H) / ROW_H);
+  const span = () => ({ from: Math.min(drag.a, drag.b), hours: Math.abs(drag.b - drag.a) + 1 });
+  const paint = () => {
+    let el = cal.querySelector(".cal-select");
+    if (!el) { el = document.createElement("div"); el.className = "cal-select"; el.setAttribute("aria-hidden", "true"); cal.append(el); }
+    const { from, hours } = span();
+    el.style.gridColumn = COURTS.indexOf(drag.court) + 2; el.style.gridRow = `${from + 2} / span ${hours}`;
+    el.innerHTML = `<b>${SLOTS[from].replace(":00", "")} – ${SLOTS[(from + hours) % 24].replace(":00", "")}</b><small>${hours} hr · ${$(".segmented .active")?.dataset.tab === "block" ? "Block" : "Walk-in"}</small>`;
+  };
+  const extend = y => {
+    const target = Math.max(drag.a - (MAX - 1), Math.min(drag.a + (MAX - 1), hourAt(y))), step = target >= drag.a ? 1 : -1;
+    let h = drag.a; while (h !== target && free(drag.court, h + step)) h += step;
+    if (h !== drag.b) { drag.b = h; drag.moved = true; paint(); }
+  };
+  const begin = (slot, pointerId) => { drag = { court: slot.dataset.court, a: SLOTS.indexOf(slot.dataset.time), b: SLOTS.indexOf(slot.dataset.time), moved: false, pointerId }; cal.classList.add("selecting"); paint(); };
+  const finish = apply => {
+    if (!drag) return;
+    const { from, hours } = span(), court = drag.court;
+    cal.classList.remove("selecting"); drag = null;
+    const el = cal.querySelector(".cal-select"); if (el) { el.classList.add("done"); setTimeout(() => el.remove(), 500); }
+    if (!apply) { el?.remove(); return; }
+    suppressClick = true; setTimeout(() => suppressClick = false, 400);
+    ($(".segmented .active")?.dataset.tab === "block" ? prefillBlock : prefillWalkin)(court, SLOTS[from], hours);
+  };
+  cal.addEventListener("pointerdown", event => {
+    const slot = event.target.closest("button.cal-slot"); if (!slot || event.button > 0) return;
+    if (event.pointerType === "touch") {
+      pending = { slot, x: event.clientX, y: event.clientY, id: event.pointerId, timer: setTimeout(() => { begin(slot, event.pointerId); haptic(); pending = null; }, 350) };
+      return;
+    }
+    event.preventDefault(); begin(slot, event.pointerId);
+  });
+  addEventListener("pointermove", event => {
+    if (pending && event.pointerId === pending.id && Math.hypot(event.clientX - pending.x, event.clientY - pending.y) > 8) { clearTimeout(pending.timer); pending = null; }
+    if (drag && event.pointerId === drag.pointerId) extend(event.clientY);
+  });
+  addEventListener("pointerup", event => {
+    if (pending && event.pointerId === pending.id) { clearTimeout(pending.timer); pending = null; }
+    if (drag && event.pointerId === drag.pointerId) finish(drag.moved || event.pointerType === "touch");
+  });
+  addEventListener("pointercancel", event => { if (pending) { clearTimeout(pending.timer); pending = null; } if (drag && event.pointerId === drag.pointerId) finish(false); });
+  // while a touch selection is active, the finger drags the selection instead of scrolling the calendar
+  cal.addEventListener("touchmove", event => { if (drag) event.preventDefault(); }, { passive: false });
+  cal.addEventListener("contextmenu", event => { if (drag || pending || event.target.closest("button.cal-slot")) event.preventDefault(); });
+  cal.addEventListener("click", event => { if (suppressClick) { event.stopPropagation(); event.preventDefault(); } }, true);
+  addEventListener("keydown", event => { if (event.key === "Escape" && drag) finish(false); });
 }
 const showError = (sel, msg) => { const el = $(sel); el.textContent = msg; el.classList.remove("hidden"); };
 const hideError = sel => $(sel).classList.add("hidden");
@@ -343,6 +424,17 @@ function conflictsFor(court, range) {
   const booked = hourRows().filter(b => b.courtKey === ck && occupies(b) && range.includes(b.time));
   const blocked = blockGroups().filter(g => g.courtKey === ck && hours.some(h => h >= g.start && h < g.start + g.hours));
   return { booked, blocked };
+}
+function repeatDates() {
+  const weeks = Number($("#walkin-repeat").value || 1);
+  return Array.from({ length: weeks }, (_, i) => localDate(7 * i, asDate(dateInput.value)));
+}
+function updateRepeatHint() {
+  const dates = repeatDates(), hint = $("#walkin-repeat-hint");
+  hint.classList.toggle("hidden", dates.length < 2);
+  if (dates.length < 2) return;
+  const day = asDate(dates[0]).toLocaleDateString("en-PH", { weekday: "long" }), last = asDate(dates.at(-1)).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+  hint.textContent = `${dates.length} bookings, every ${day} until ${last}. The payment choice applies to each week.`;
 }
 async function walkin(event) {
   event.preventDefault(); hideError("#walkin-error");
@@ -354,23 +446,37 @@ async function walkin(event) {
   const { blocked } = conflictsFor(court, range);
   if (blocked.length) return showError("#walkin-error", `${court} is blocked then (${blocked[0].reason}).`);
   const button = event.target.querySelector('[type="submit"]'); button.disabled = true; button.textContent = "Saving…";
-  const id = `staff-${Date.now()}`, paid = payment !== "unpaid";
+  const id = `staff-${Date.now()}`, paid = payment !== "unpaid", dates = repeatDates(), weekly = dates.length > 1;
   const base = { court, date: dateInput.value, players: "Walk-in", contactPhone: $("#walkin-phone").value.trim(), note: $("#walkin-note").value.trim(), createdAt: new Date().toISOString(), status: "confirmed", paymentStatus: paid ? "paid" : "unpaid", ownerUid: "staff", ownerName: name, startTime: start, durationHours: hours, totalPrice: override > 0 ? override : walkinTotal(), reservationId: id, staffCreated: true };
   if (paid) Object.assign(base, { paymentMethod: payment, paidAt: Date.now(), verifiedBy: auth.currentUser.email });
+  const added = [], skipped = [];
   try {
-    const result = await db.ref(`bookings/${dateInput.value}/${courtKey(court)}`).transaction(current => {
-      current = current || {};
-      if (range.some(t => occupies(current[slotKey(t)]))) return;
-      range.forEach((t, n) => { current[slotKey(t)] = { ...base, time: t, isPrimary: n === 0 }; });
-      return current;
-    });
-    if (!result.committed) { showError("#walkin-error", "Someone booked part of that time. Pick another slot."); return; }
-    const publicRows = {};
-    range.forEach(t => publicRows[`availability/${dateInput.value}/${courtKey(court)}/${slotKey(t)}`] = availabilityRow(base));
-    await db.ref().update(publicRows);
-    event.target.reset(); $("#walkin-court").value = court; updateWalkinPrice();
-    toast(`Walk-in added · ${name}, ${court} at ${start.replace(":00", "")}`);
-  } catch (error) { console.error(error); showError("#walkin-error", "Couldn't save. Check your connection and try again."); }
+    for (const [i, date] of dates.entries()) {
+      // other weeks: skip any week where the court is blocked or already booked
+      if (i > 0) {
+        const blocks = (await db.ref(`blocks/${date}/${courtKey(court)}`).once("value")).val() || {};
+        if (range.some(t => blocks[slotKey(t)])) { skipped.push({ date, why: "blocked" }); continue; }
+      }
+      const row = { ...base, date, reservationId: i ? `${id}-w${i + 1}` : id, totalPrice: override > 0 ? override : range.reduce((n, t) => n + hourlyRate(t, date), 0), ...(weekly ? { seriesId: id, seriesWeek: i + 1, seriesWeeks: dates.length } : {}) };
+      // The database rules allow writes one hour at a time, so: check the hours are free, then write them together.
+      const current = (await db.ref(`bookings/${date}/${courtKey(court)}`).once("value")).val() || {};
+      if (range.some(t => occupies(current[slotKey(t)]))) { if (!weekly) { showError("#walkin-error", "Someone booked part of that time. Pick another slot."); return; } skipped.push({ date, why: "already booked" }); continue; }
+      const rows = {};
+      range.forEach((t, n) => {
+        rows[`bookings/${date}/${courtKey(court)}/${slotKey(t)}`] = { ...row, time: t, isPrimary: n === 0 };
+        rows[`availability/${date}/${courtKey(court)}/${slotKey(t)}`] = availabilityRow(row);
+      });
+      await db.ref().update(rows);
+      added.push(date);
+    }
+    event.target.reset(); $("#walkin-court").value = court; updateWalkinPrice(); updateRepeatHint();
+    if (!weekly) toast(`Walk-in added · ${name}, ${court} at ${start.replace(":00", "")}`);
+    else if (!skipped.length) toast(`Added ${added.length} weekly bookings · ${name}, ${court} at ${start.replace(":00", "")}`);
+    else {
+      const day = d => asDate(d).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" });
+      await staffModal({ title: `Added ${added.length} of ${dates.length} weeks`, message: `${name} · ${court} · ${start.replace(":00", "")}. These weeks were skipped:`, details: `<ul class="modal-list">${skipped.map(x => `<li>${day(x.date)} · ${safe(x.why)}</li>`).join("")}</ul>`, confirm: "OK", cancel: null });
+    }
+  } catch (error) { console.error(error); showError("#walkin-error", added.length ? `Saved ${added.length} of ${dates.length} weeks, then lost the connection. Check the calendar before trying again.` : "Couldn't save. Check your connection and try again."); }
   finally { button.disabled = false; button.textContent = "Create walk-in"; }
 }
 
@@ -427,6 +533,39 @@ async function renderResolve() {
   });
 }
 
+/* ---------- export bookings as a spreadsheet (CSV opens in Excel and Google Sheets) ---------- */
+const csvCell = value => { const text = String(value ?? ""); return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text; };
+async function exportCsv() {
+  const today = localDate(), monthStart = `${today.slice(0, 8)}01`;
+  const { ok } = await staffModal({ title: "Export bookings", message: "Downloads every booking in these dates as a CSV file for Excel or Google Sheets. Expired holds are left out.", details: `<div class="modal-dates"><label>From<input type="date" id="export-from" value="${monthStart}" data-focus></label><label>To<input type="date" id="export-to" value="${today}"></label></div>`, confirm: "Download" });
+  if (!ok) return;
+  let from = $("#export-from").value, to = $("#export-to").value;
+  if (!from || !to) return toast("Pick both dates.", "error");
+  if (from > to) [from, to] = [to, from];
+  try {
+    const all = (await db.ref("bookings").orderByKey().startAt(from).endAt(to).once("value")).val() || {};
+    const header = ["Date", "Day", "Court", "Start", "End", "Hours", "Customer", "Phone", "Status", "Payment", "Method", "Reference", "Amount", "Walk-in", "Weekly", "Paid at", "Checked by", "Note"];
+    const lines = [header], rows = [];
+    Object.entries(all).forEach(([date, courts]) => Object.entries(courts || {}).forEach(([ck, times]) => Object.values(times || {}).forEach(b => {
+      if (b.isPrimary === false || isExpired(b)) return;
+      rows.push({ ...b, date });
+    })));
+    rows.sort((a, b) => a.date.localeCompare(b.date) || SLOTS.indexOf(a.startTime || a.time) - SLOTS.indexOf(b.startTime || b.time) || String(a.court).localeCompare(String(b.court)));
+    let paidTotal = 0, paidCount = 0;
+    rows.forEach(b => {
+      const start = b.startTime || b.time, paid = b.paymentStatus === "paid" && b.status !== "cancelled";
+      if (paid) { paidTotal += Number(b.totalPrice || 0); paidCount++; }
+      lines.push([b.date, asDate(b.date).toLocaleDateString("en-PH", { weekday: "short" }), b.court, start, endOf(start, b.durationHours), b.durationHours || 1, b.ownerName || "", b.contactPhone || "", statusName(b), b.paymentStatus === "paid" ? "Paid" : "Unpaid", methodName(b.paymentMethod), b.paymentReference || "", Number(b.totalPrice || 0), b.staffCreated ? "Yes" : "", b.seriesWeeks ? `${b.seriesWeek}/${b.seriesWeeks}` : "", b.paidAt ? new Date(b.paidAt).toLocaleString("en-PH") : "", b.verifiedBy || "", b.note || ""]);
+    });
+    lines.push([], ["Paid bookings", paidCount, "", "", "", "", "", "", "", "", "", "Paid total", paidTotal]);
+    const csv = "\ufeff" + lines.map(line => line.map(csvCell).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })), link = document.createElement("a");
+    link.href = url; link.download = `mayha-bookings-${from}-to-${to}.csv`; document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast(`Exported ${rows.length} booking${rows.length === 1 ? "" : "s"} · ${peso(paidTotal)} paid`);
+  } catch (error) { console.error(error); toast("Couldn't export. Check your connection and try again.", "error"); }
+}
+
 /* ---------- render all ---------- */
 function render() {
   const list = reservations();
@@ -442,9 +581,10 @@ function start() {
   updateWalkinPrice();
   db.ref(".info/connected").on("value", snap => { const live = $("#live"), on = snap.val() === true; live.dataset.state = on ? "live" : "offline"; live.querySelector("span").textContent = on ? "Live" : "Offline"; });
   setDate(localDate());
+  initCalendarDrag();
   checkMigration();
   cleanupProofs();
-  db.ref("paymentLog").on("value", snap => { paymentLog = snap.val() || {}; renderResolve().catch(console.error); }, () => {});
+  db.ref("paymentLog").on("value", snap => { paymentLog = snap.val() || {}; renderList(reservations()); renderResolve().catch(console.error); }, () => {});
   setInterval(() => renderResolve().catch(console.error), 120000);
   $("#run-migration").onclick = event => runMigration(event.currentTarget);
   if (location.hash === "#tools") $("#tools").scrollIntoView();
@@ -467,4 +607,6 @@ $("#filter-status").onchange = () => renderList(reservations());
 document.querySelectorAll(".segmented button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 ["#walkin-time", "#walkin-hours"].forEach(sel => $(sel).addEventListener("change", updateWalkinPrice));
 $("#walk-in-form").onsubmit = walkin;
+$("#walkin-repeat").onchange = updateRepeatHint;
+$("#export-btn").onclick = exportCsv;
 $("#block-form").onsubmit = blockTime;

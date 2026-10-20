@@ -48,3 +48,4 @@
 .receipt-spinner{flex:none;width:14px;height:14px;border:2px solid #a8c2d9;border-top-color:var(--ink);border-radius:50%;animation:receipt-spin .8s linear infinite}
 @keyframes receipt-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.receipt-spinner{animation-duration:2.4s}}
+.calendar-btn{min-height:44px;margin-top:14px;padding:0 18px;border:1px solid #8baecb;border-radius:var(--r-control,8px);background:#fff;color:var(--ink);font:700 0.875rem Outfit;cursor:pointer}.calendar-btn:active{transform:scale(.97)}

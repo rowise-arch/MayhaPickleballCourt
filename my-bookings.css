@@ -114,3 +114,30 @@ button,input,select,textarea{font-family:Outfit,system-ui,sans-serif}
 @keyframes toast-countdown{to{transform:scaleX(0)}}
 .bk.cancelling{opacity:.55;transition:opacity 200ms ease}
 .bk.cancelling .bk-actions{visibility:hidden}
+
+/* ---------- Dark mode (colours come from polish.css) ---------- */
+@media (prefers-color-scheme:dark){
+  .mb-bar{background:rgba(14,22,33,.78);border-color:var(--line)}
+  .mb-bar.scrolled{box-shadow:0 10px 24px -14px #000c}
+  .profile-btn{background:var(--fill)}
+  .bk{background:var(--surface);border-color:var(--line);box-shadow:none}
+  .bk.past{background:#131d29}
+  .pill.pending{background:var(--t-pending);color:var(--t-pending-ink)}
+  .pill.review,.hold-pill.warning{background:var(--t-review);color:var(--t-review-ink)}
+  .pill.confirmed,.hold-pill{background:var(--t-ok);color:var(--t-ok-ink)}
+  .pill.checked{background:var(--t-info);color:var(--t-info-ink)}
+  .pill.cancelled,.hold-pill.last-call{background:var(--t-bad);color:var(--t-bad-ink)}
+  .pill.muted,.mb-past summary span{background:var(--t-muted);color:var(--t-muted-ink)}
+  .bk-link{text-decoration-color:#4b6a88}
+  .bk-cancel{color:#ff9c86}
+  .mb-empty{background:var(--surface);border-color:var(--line)}
+  .btn-primary,.book-btn,.mb-toast button{color:var(--on-lime)}
+  .bk.skeleton i{background:linear-gradient(90deg,#1a2636 0,#22324a 50%,#1a2636 100%);background-size:200% 100%}
+  .mini-dialog{background:var(--surface)}
+  .mini-dialog::backdrop{background:#050a12b3}
+  .mini-ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
+  .mb-toast{background:#23364d;box-shadow:0 10px 30px #0009}
+  @media (prefers-reduced-transparency:reduce){.mb-bar{background:var(--cream)}}
+  @media (prefers-contrast:more){.mb-bar{background:var(--cream);border-bottom:2px solid var(--ink)}}
+  @media (hover:hover) and (pointer:fine){.bk-cancel:hover{background:var(--t-bad)}}
+}
