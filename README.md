@@ -153,7 +153,14 @@ Walk-ins are written one hour at a time, which is what the rules above allow. Th
 
 `share-image.jpg` is the picture shown when someone shares the site on Facebook, Messenger or Viber. The tags in the `<head>` of `index.html` point at `https://mayha-pickleball-court.vercel.app`; if you move to your own domain, change the two URLs there. Facebook caches previews: after changing them, paste the link into Facebook's Sharing Debugger and press **Scrape Again**.
 
-`site.webmanifest`, `icon-192.png` and `icon-512.png` let customers add the site to their home screen (Chrome: menu → **Add to Home screen**; iPhone Safari: Share → **Add to Home Screen**). It opens full screen with your logo.
+`site.webmanifest`, `icon-192.png` and `icon-512.png` let customers add the site to their home screen. It opens full screen with your logo, like an app.
+
+- After a customer sends a payment, and on My bookings once they have a booking, a **Get the Mayha Square app** card appears. On Android and desktop Chrome or Edge, **Install** adds it in one tap; on iPhone the card shows the two steps (Share → **Add to Home Screen**). "Not now" hides it for 30 days, and it never shows once installed.
+- `sw.js` (the service worker) keeps a copy of the site on the phone. Pages, code and styles are always fetched fresh when there's a connection, so a new deploy shows up on the next visit; the saved copy is only used offline or when the network takes more than 4 seconds. Images and fonts load from the saved copy. Bookings, sign-in and payments always use the live database and are never cached.
+- Offline, pages that were opened before still load, a "You're offline" notice shows at the top, and a page never opened before shows a friendly offline screen.
+- To force every phone to drop its saved copy (rarely needed), change `VERSION` at the top of `sw.js`.
+
+The staff dashboard on a phone shows one court at a time (tabs above the calendar, with a count of that court's bookings), and puts Payments to resolve and Reservations above the calendar.
 
 ## Give an account administrator access
 

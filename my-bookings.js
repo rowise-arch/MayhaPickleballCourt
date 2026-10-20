@@ -168,6 +168,7 @@ auth.onAuthStateChanged(current => {
     bookings = Object.entries(snap.val() || {}).map(([id, b]) => ({ ...b, reservationId: b.reservationId || id }));
     $("#loading").classList.add("hidden"); $("#content").classList.remove("hidden");
     render();
+    if (bookings.length && !$("#install-slot").dataset.wanted) renderInstallCard($("#install-slot")); // only for people who have booked
   };
   ref.on("value", onValue, error => { console.error(error); $("#loading").classList.add("hidden"); toast("Couldn't load your bookings. Try refreshing.", "error"); });
   stopListener = () => ref.off("value", onValue);

@@ -287,3 +287,31 @@ button.cal-slot:focus-visible:after{opacity:1}
     .ghost:hover,.btn.ghost:hover,.icon-btn:hover,button.cal-slot:hover,.proof-btn:hover{background:var(--tint)}
   }
 }
+
+/* ---------- Offline notice (from site-config.js) ---------- */
+.offline-notice{position:fixed;z-index:60;left:50%;top:calc(env(safe-area-inset-top) + 10px);max-width:calc(100vw - 32px);padding:9px 14px;border-radius:99px;background:#23364d;color:#fff;font:600 13px/1.3 Outfit,system-ui,sans-serif;text-align:center;box-shadow:0 10px 30px #0b2c5a40;opacity:0;transform:translate(-50%,-8px);transition:opacity 200ms var(--ease-out),transform 200ms var(--ease-out);pointer-events:none}
+.offline-notice.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.offline-notice{transform:translate(-50%,0)}}
+
+/* ---------- Phones: one court at a time, and what needs doing comes first ---------- */
+.court-switch{display:none}
+@media(max-width:700px){
+  #dashboard:not(.hidden){display:flex;flex-direction:column}
+  #migration{order:0}.toolbar{order:1}.metrics{order:2}#resolve{order:3}.list-card{order:4}.work{order:5}
+  .list-card{margin-bottom:16px}
+  .court-switch{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:0 0 10px;padding:4px;border-radius:var(--r-control);background:#e7f0f7}
+  .court-switch button{position:relative;min-height:44px;border:0;border-radius:6px;background:transparent;color:var(--muted);font:700 14px Outfit;cursor:pointer;touch-action:manipulation}
+  .court-switch button.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px #0b2c5a1f}
+  .court-switch button{white-space:nowrap}
+  .court-switch button span{position:absolute;top:2px;right:2px;display:grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--ink);color:#fff;font-size:10px;line-height:1}
+  .court-switch button:active{transform:scale(.97)}
+  .calendar{grid-template-columns:52px minmax(0,1fr);min-width:0}
+  .calendar-scroll{max-height:62vh}
+  .calendar [data-col]{grid-column:2!important}
+  .calendar[data-show="2"] [data-col]:not([data-col="2"]),.calendar[data-show="3"] [data-col]:not([data-col="3"]),.calendar[data-show="4"] [data-col]:not([data-col="4"]),.calendar[data-show="5"] [data-col]:not([data-col="5"]){display:none}
+}
+@media(max-width:700px) and (prefers-color-scheme:dark){
+  .court-switch{background:#0f1925}
+  .court-switch button.active{background:var(--tint);box-shadow:0 1px 3px #0008}
+  .court-switch button span{background:var(--sky);color:#0f2f57}
+}

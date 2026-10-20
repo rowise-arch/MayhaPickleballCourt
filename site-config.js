@@ -381,3 +381,53 @@ function prepareSheet(dialog) {
   dialog.addEventListener("pointerup", release);
   dialog.addEventListener("pointercancel", release);
 }
+
+/* ---------- app on the home screen (PWA) ----------
+   sw.js keeps a copy of the site on the phone for fast, offline-friendly opening. Pages and code are still
+   fetched fresh whenever there's a connection, so deploys show up on the next visit. */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname))) {
+  addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(error => console.warn("Offline support unavailable", error)));
+}
+const isInstalledApp = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+/* A small notice while the phone has no connection. */
+(function offlineNotice() {
+  const show = () => {
+    let el = document.querySelector(".offline-notice");
+    if (navigator.onLine) { el?.classList.remove("show"); return; }
+    if (!el) { el = document.createElement("div"); el.className = "offline-notice"; el.setAttribute("role", "status"); el.textContent = "You're offline. Bookings and payments need internet."; document.body.append(el); }
+    requestAnimationFrame(() => el.classList.add("show"));
+  };
+  addEventListener("online", show); addEventListener("offline", show);
+  if (document.readyState === "loading") addEventListener("DOMContentLoaded", show); else show();
+})();
+
+/* "Get the app" card. Android and desktop Chrome or Edge install with one tap; iPhone shows the two steps.
+   Hidden once installed, or for 30 days after "Not now". */
+let installPrompt = null;
+const INSTALL_SNOOZE = "mayha-install-snoozed";
+addEventListener("beforeinstallprompt", event => { event.preventDefault(); installPrompt = event; document.querySelectorAll(".install-slot[data-wanted]").forEach(renderInstallCard); });
+addEventListener("appinstalled", () => { installPrompt = null; document.querySelectorAll(".install-card").forEach(card => card.remove()); });
+function installSnoozed() { try { return Date.now() - Number(localStorage.getItem(INSTALL_SNOOZE) || 0) < 30 * 24 * HOUR_MS; } catch { return false; } }
+const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+function renderInstallCard(slot) {
+  if (!slot || isInstalledApp() || installSnoozed()) return;
+  slot.dataset.wanted = "1";
+  const ios = isIos();
+  if (!installPrompt && !ios) return; // this browser can't install; try again if it offers later
+  const shareIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Share"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+  slot.innerHTML = `<section class="install-card" aria-label="Add Mayha Square to your home screen">
+    <img src="./icon-192.png" width="48" height="48" alt="">
+    <div class="install-text"><strong>Get the Mayha Square app</strong>
+      ${ios ? `<span>Tap ${shareIcon} <b>Share</b>, then <b>Add to Home Screen</b>.</span>` : `<span>Book from your home screen. No app store, nothing to download.</span>`}</div>
+    <div class="install-actions">${ios ? "" : '<button type="button" class="install-yes">Install</button>'}<button type="button" class="install-no">${ios ? "Got it" : "Not now"}</button></div>
+  </section>`;
+  slot.querySelector(".install-no").onclick = () => { try { localStorage.setItem(INSTALL_SNOOZE, String(Date.now())); } catch {} slot.innerHTML = ""; };
+  const yes = slot.querySelector(".install-yes");
+  if (yes) yes.onclick = async () => {
+    const prompt = installPrompt; if (!prompt) return;
+    installPrompt = null; prompt.prompt();
+    const choice = await prompt.userChoice.catch(() => null);
+    if (choice?.outcome === "accepted") slot.innerHTML = "";
+  };
+}

@@ -400,7 +400,7 @@ document.querySelector("#submit-payment").addEventListener("click", async () => 
       document.querySelector("#confirmation-text").textContent = `Staff will check your payment and confirm by ${new Date(result.reviewExpiresAt).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}. You'll see it in My bookings.`;
     }
     document.querySelector("#add-calendar").classList.toggle("hidden", result.outcome === "lost");
-    if (result.outcome !== "lost") haptic();
+    if (result.outcome !== "lost") { haptic(); renderInstallCard(document.querySelector("#install-slot")); }
     setPaymentAlert("", ""); updatePaymentHold();
     ["#payment-summary", ".payment-due", "#payment-tabs", ".payment-qr-card", "#payment-helper"].forEach(sel => document.querySelector(sel)?.classList.add("hidden"));
     document.querySelectorAll("#payment-modal-body .payment-field").forEach(el => el.classList.add("hidden"));

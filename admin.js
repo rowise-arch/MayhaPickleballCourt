@@ -175,7 +175,7 @@ function blockGroups() {
 }
 function renderCalendar(list) {
   const cal = $("#calendar"), parts = [`<div class="cal-corner"></div>`];
-  COURTS.forEach((court, c) => parts.push(`<div class="cal-head" style="grid-column:${c + 2}">${court}<small>Open air</small></div>`));
+  COURTS.forEach((court, c) => parts.push(`<div class="cal-head" data-col="${c + 2}" style="grid-column:${c + 2}">${court}<small>Open air</small></div>`));
   const blocked = new Set();
   blockGroups().forEach(g => { for (let h = g.start; h < g.start + g.hours; h++) blocked.add(`${g.courtKey}|${h}`); });
   const taken = new Set();
@@ -186,21 +186,22 @@ function renderCalendar(list) {
     COURTS.forEach((court, c) => {
       const key = `${courtKey(court)}|${h}`, free = !taken.has(key) && !blocked.has(key);
       parts.push(free && !past
-        ? `<button type="button" class="cal-slot" style="grid-row:${h + 2};grid-column:${c + 2}" data-court="${court}" data-time="${time}" aria-label="Add walk-in on ${court} at ${time}"></button>`
-        : `<div class="cal-slot ${past ? "past" : ""}" style="grid-row:${h + 2};grid-column:${c + 2}"></div>`);
+        ? `<button type="button" class="cal-slot" data-col="${c + 2}" style="grid-row:${h + 2};grid-column:${c + 2}" data-court="${court}" data-time="${time}" aria-label="Add walk-in on ${court} at ${time}"></button>`
+        : `<div class="cal-slot ${past ? "past" : ""}" data-col="${c + 2}" style="grid-row:${h + 2};grid-column:${c + 2}"></div>`);
     });
   });
   blockGroups().forEach(g => {
     const c = COURTS.findIndex(court => courtKey(court) === g.courtKey); if (c < 0) return;
-    parts.push(`<div class="cal-event blocked" style="grid-row:${g.start + 2} / span ${g.hours};grid-column:${c + 2}"><b>Blocked</b><small>${safe(g.reason)}</small></div>`);
+    parts.push(`<div class="cal-event blocked" data-col="${c + 2}" style="grid-row:${g.start + 2} / span ${g.hours};grid-column:${c + 2}"><b>Blocked</b><small>${safe(g.reason)}</small></div>`);
   });
   list.filter(occupies).forEach(b => {
     const c = COURTS.indexOf(b.court), start = SLOTS.indexOf(b.startTime || b.time), hours = Math.min(Number(b.durationHours || 1), 24 - start);
     if (c < 0 || start < 0) return;
-    parts.push(`<button type="button" class="cal-event ${statusClass(b)} ${pastState(start + hours - 1) ? "past" : ""}" style="grid-row:${start + 2} / span ${hours};grid-column:${c + 2}" data-id="${safe(b.reservationId)}"><b>${safe(b.ownerName || "Walk-in")}</b><small>${safe(b.startTime || b.time)} – ${safe(endOf(b.startTime || b.time, b.durationHours))} · ${safe(statusName(b))}</small></button>`);
+    parts.push(`<button type="button" class="cal-event ${statusClass(b)} ${pastState(start + hours - 1) ? "past" : ""}" data-col="${c + 2}" style="grid-row:${start + 2} / span ${hours};grid-column:${c + 2}" data-id="${safe(b.reservationId)}"><b>${safe(b.ownerName || "Walk-in")}</b><small>${safe(b.startTime || b.time)} – ${safe(endOf(b.startTime || b.time, b.durationHours))} · ${safe(statusName(b))}</small></button>`);
   });
   if (dateInput.value === localDate()) parts.push(`<div class="now-line" style="top:${HEAD_H + currentHourFraction() * ROW_H}px"><span>Now</span></div>`);
   cal.innerHTML = parts.join("");
+  renderCourtSwitch(list);
   cal.querySelectorAll("button.cal-slot").forEach(slot => slot.onclick = () => prefillWalkin(slot.dataset.court, slot.dataset.time));
   cal.querySelectorAll("button.cal-event").forEach(ev => ev.onclick = () => focusRow(ev.dataset.id));
   if (scrolledForDate !== dateInput.value) {
@@ -208,6 +209,17 @@ function renderCalendar(list) {
     const target = dateInput.value === localDate() ? Math.max(0, Math.floor(currentHourFraction()) - 1) : 7;
     $("#calendar-scroll").scrollTop = target * ROW_H;
   }
+}
+/* Phones show one court at a time; these tabs pick which. The choice is remembered on this device. */
+let shownCourt = (() => { try { return Number(localStorage.getItem("mayha-staff-court")) || 0; } catch { return 0; } })();
+function renderCourtSwitch(list) {
+  const counts = COURTS.map(court => list.filter(b => b.court === court && occupies(b)).length);
+  $("#court-switch").innerHTML = COURTS.map((court, c) => `<button type="button" role="tab" aria-selected="${c === shownCourt}" class="${c === shownCourt ? "active" : ""}" data-c="${c}">${court}${counts[c] ? `<span>${counts[c]}</span>` : ""}</button>`).join("");
+  $("#calendar").dataset.show = shownCourt + 2;
+  $("#court-switch").querySelectorAll("button").forEach(btn => btn.onclick = () => {
+    shownCourt = Number(btn.dataset.c); try { localStorage.setItem("mayha-staff-court", shownCourt); } catch {}
+    renderCourtSwitch(list);
+  });
 }
 function focusRow(id) {
   const row = document.querySelector(`.booking-row[data-id="${CSS.escape(id)}"]`); if (!row) return;
@@ -376,7 +388,7 @@ function initCalendarDrag() {
     let el = cal.querySelector(".cal-select");
     if (!el) { el = document.createElement("div"); el.className = "cal-select"; el.setAttribute("aria-hidden", "true"); cal.append(el); }
     const { from, hours } = span();
-    el.style.gridColumn = COURTS.indexOf(drag.court) + 2; el.style.gridRow = `${from + 2} / span ${hours}`;
+    el.style.gridColumn = el.dataset.col = COURTS.indexOf(drag.court) + 2; el.style.gridRow = `${from + 2} / span ${hours}`;
     el.innerHTML = `<b>${SLOTS[from].replace(":00", "")} – ${SLOTS[(from + hours) % 24].replace(":00", "")}</b><small>${hours} hr · ${$(".segmented .active")?.dataset.tab === "block" ? "Block" : "Walk-in"}</small>`;
   };
   const extend = y => {
