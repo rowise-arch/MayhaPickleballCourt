@@ -322,3 +322,11 @@ input,select{font-size:1rem}
 @media (prefers-reduced-motion:reduce){.theme-switch button{transition:none}}
 @media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .theme-switch button[aria-checked="true"]{background:#26384f;box-shadow:none}}
 :where(:root[data-theme="dark"]) .theme-switch button[aria-checked="true"]{background:#26384f;box-shadow:none}
+
+/* ---------- Native feel on phones (mobile-native pass) ---------- */
+/* Controls never show the long-press copy/share callout; text that is content stays selectable. */
+button,[role="button"],[role="tab"],[role="radio"],.slot,.day-chip,.court-tab,.chip{-webkit-touch-callout:none}
+a.book-btn,a.btn-primary,a.primary-link,.court-card-btn,.mb-book-link{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+[role="tab"],[role="radio"],label.proof-dropzone,summary{touch-action:manipulation}
+/* iPhone zooms into any field under 16px and doesn't zoom back out. */
+@media (pointer:coarse){input,select,textarea,.payment-field input:not(.visually-hidden){font-size:16px}}

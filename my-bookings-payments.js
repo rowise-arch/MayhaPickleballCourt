@@ -15,7 +15,7 @@ function openPayment(b) {
     <section class="payment-qr-card" id="method-details"></section>
     <p class="payment-helper">Pay the exact amount, then upload your receipt screenshot or type the reference number.</p>
     <div class="payment-field"><span>SCREENSHOT (OPTIONAL)</span><input id="pay-proof" class="visually-hidden" type="file" accept="image/png,image/jpeg"><label class="proof-dropzone" for="pay-proof"><b>↑ Upload screenshot</b><small>We'll fill in the reference number for you</small></label><div class="proof-preview hidden" id="proof-preview"></div></div>
-    <div class="payment-field"><label for="pay-reference">REFERENCE NUMBER</label><input id="pay-reference" type="text" minlength="6" autocomplete="off" autocapitalize="characters" placeholder="Enter your payment reference" value="${safe(b.paymentReference || "")}"><p class="receipt-note" id="receipt-note" hidden aria-live="polite"></p><p>Find this in your payment confirmation (at least 6 characters).</p></div>
+    <div class="payment-field"><label for="pay-reference">REFERENCE NUMBER</label><input id="pay-reference" type="text" minlength="6" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Enter your payment reference" value="${safe(b.paymentReference || "")}"><p class="receipt-note" id="receipt-note" hidden aria-live="polite"></p><p>Find this in your payment confirmation (at least 6 characters).</p></div>
     <p class="auth-error hidden" id="pay-error" role="alert"></p>
     <div class="payment-submitted hidden" id="pay-done"><div>✓</div><strong>Payment sent</strong><p>We'll confirm your booking once staff verify it.</p></div>
   </div>

@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <script>/* apply the saved Light/Dark choice before the page shows (see site-config.js) */try{var t=localStorage.getItem("mayha-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <script>/* apply the saved Light/Dark choice before the page shows (see site-config.js) */try{var t=localStorage.getItem("mayha-theme");if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t}}catch(e){}</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f3f8fc" media="(prefers-color-scheme: light)">
   <link rel="manifest" href="./site.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <meta name="apple-mobile-web-app-title" content="Mayha Square">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#101826" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#0e1621" media="(prefers-color-scheme: dark)">
   <meta name="robots" content="noindex">
   <title>Admin — Mayha Square Pickleball Court</title>
   <link rel="icon" href="./mayha-logo-64.png" type="image/png">
@@ -79,8 +80,8 @@
           </div>
 
           <form id="walk-in-form" novalidate class="tool-form" data-panel="walkin">
-            <label>Customer name<input id="walkin-name" required autocomplete="off" placeholder="e.g. Juan dela Cruz"></label>
-            <label>Contact number<input id="walkin-phone" type="tel" inputmode="tel" autocomplete="off" placeholder="09XX XXX XXXX"></label>
+            <label>Customer name<input id="walkin-name" required autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="e.g. Juan dela Cruz"></label>
+            <label>Contact number<input id="walkin-phone" type="tel" inputmode="tel" autocomplete="off" enterkeyhint="next" placeholder="09XX XXX XXXX"></label>
             <div class="two">
               <label>Court<select id="walkin-court"><option>Court 1</option><option>Court 2</option><option>Court 3</option><option>Court 4</option></select></label>
               <label>Start<select id="walkin-time"></select></label>
@@ -90,8 +91,8 @@
               <label>Payment<select id="walkin-payment"><option value="unpaid">Not paid yet</option><option value="cash">Paid · Cash</option><option value="gcash">Paid · GCash</option><option value="maya">Paid · Maya</option></select></label>
             </div>
             <label>Repeat<select id="walkin-repeat"><option value="1">Just this day</option><option value="4">Every week · 4 weeks</option><option value="8">Every week · 8 weeks</option><option value="12">Every week · 12 weeks</option></select><small class="field-hint hidden" id="walkin-repeat-hint"></small></label>
-            <label>Total<input id="walkin-price" type="number" min="0" inputmode="numeric" placeholder="₱0"><small class="field-hint" id="walkin-price-hint"></small></label>
-            <label>Note<input id="walkin-note" autocomplete="off" placeholder="Optional"></label>
+            <label>Total<input id="walkin-price" type="number" min="0" inputmode="numeric" enterkeyhint="next" placeholder="₱0"><small class="field-hint" id="walkin-price-hint"></small></label>
+            <label>Note<input id="walkin-note" autocomplete="off" enterkeyhint="done" placeholder="Optional"></label>
             <p class="form-error hidden" id="walkin-error" role="alert"></p>
             <button class="btn primary wide" type="submit">Create walk-in</button>
           </form>
@@ -102,7 +103,7 @@
               <label>Start<select id="block-time"></select></label>
             </div>
             <label>Length<select id="block-hours"><option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option><option value="24">Full day</option></select></label>
-            <label>Reason<input id="block-reason" required autocomplete="off" placeholder="e.g. Resurfacing, private event"></label>
+            <label>Reason<input id="block-reason" required autocomplete="off" enterkeyhint="done" placeholder="e.g. Resurfacing, private event"></label>
             <p class="form-error hidden" id="block-error" role="alert"></p>
             <button class="btn danger wide" type="submit">Block time</button>
           </form>

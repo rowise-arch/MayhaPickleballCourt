@@ -436,13 +436,14 @@ function renderInstallCard(slot) {
    Auto (the default) follows the phone or computer. A choice of Light or Dark is remembered on this device.
    A tiny script in each page's <head> applies the saved choice before the page shows, so there's no flash. */
 const THEME_KEY = "mayha-theme";
-const THEME_COLORS = { light: "#f3f8fc", dark: "#101826" };
+const THEME_COLORS = { light: "#f3f8fc", dark: "#0e1621" }; // match the top bar, which is what sits under the status bar
 const systemDark = matchMedia("(prefers-color-scheme: dark)");
 function savedTheme() { try { const t = localStorage.getItem(THEME_KEY); return t === "light" || t === "dark" ? t : "auto"; } catch { return "auto"; } }
 const themeNow = () => { const t = savedTheme(); return t === "auto" ? (systemDark.matches ? "dark" : "light") : t; };
 function applyTheme() {
   const t = savedTheme(), root = document.documentElement;
   if (t === "auto") delete root.dataset.theme; else root.dataset.theme = t;
+  root.style.colorScheme = t === "auto" ? "" : t; // form controls, scrollbars and the page behind match the choice
   document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
     meta.dataset.original ||= meta.content;
     meta.content = t === "auto" ? meta.dataset.original : THEME_COLORS[t];

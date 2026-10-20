@@ -359,3 +359,14 @@ button.cal-slot:focus-visible:after{opacity:1}
 /* ---------- Staff light/dark button ---------- */
 .theme-toggle{display:inline-grid;place-items:center;width:44px;height:44px;padding:0;color:var(--ink);cursor:pointer}
 @media(max-width:480px){.bar-right{gap:8px}.live span{display:none}.live{padding:0 4px}}
+
+/* ---------- Native feel on phones (mobile-native pass) ---------- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+a,[role="tab"],[role="radio"],select,label,summary{touch-action:manipulation}
+button,[role="tab"],.btn,.ghost{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* iPhone zooms into any field under 16px and doesn't zoom back out. */
+@media (pointer:coarse){input,select,textarea,.filter select,.date-picker input,.modal-dates input,.status-select{font-size:16px}}
+/* svh: the calendar never grows taller than the screen when the address bar is showing. */
+.calendar-scroll{max-height:min(68svh,720px)}
+@media(max-width:700px){.calendar-scroll{max-height:62svh}}
+.proof-view img{max-height:min(70svh,640px)}
