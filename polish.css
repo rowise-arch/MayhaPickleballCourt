@@ -197,52 +197,99 @@ input,select{font-size:1rem}
    --ink is the text colour, so it turns light; --fill is the brand blue used behind buttons and panels.
    Tints keep their meaning (yellow = waiting, green = done, red = problem), just darker. */
 @media (prefers-color-scheme:dark){
-  :root{color-scheme:dark;--ink:#e4eefa;--cream:#0e1621;--surface:#162130;--raised:#1b2838;--line:#2a3b50;--muted:#9db0c4;--sky:#7cc3f0;--fill:#1d4f8f;--field:#101a26;--on-lime:#0f2f57;
+  :root:not([data-theme="light"]){color-scheme:dark;--ink:#e4eefa;--cream:#0e1621;--surface:#162130;--raised:#1b2838;--line:#2a3b50;--muted:#9db0c4;--sky:#7cc3f0;--fill:#1d4f8f;--field:#101a26;--on-lime:#0f2f57;
     --t-pending:#3a3111;--t-pending-ink:#f2d578;--t-review:#3d2516;--t-review-ink:#ffb88f;--t-ok:#143522;--t-ok-ink:#9fe6ad;--t-info:#13304d;--t-info-ink:#a9d4ff;--t-bad:#3d1d16;--t-bad-ink:#ffab97;--t-muted:#243039;--t-muted-ink:#b7c3ce;--tint:#1b2a3c}
-  body{background:var(--cream);color:var(--ink)}
-  dialog,.mini-dialog,.account-dialog{background:var(--surface);color:var(--ink);box-shadow:0 20px 80px #0008}
-  dialog::backdrop,#booking-dialog::backdrop{background:#050a12cc}
-  .topbar,header.topbar{border-color:var(--line)}
-  .topbar{background:rgba(14,22,33,.78)}
-  .topbar.scrolled{box-shadow:0 10px 24px -14px #000c}
-  .profile-btn,.hero,.summary-card,footer,.site-footer,.slot.selected,.day-chip.active,.payment-tabs button.active{background:var(--fill)}
-  .slot.selected{border-color:var(--fill)}
-  .day-chip.active{border-color:var(--sky)}
-  .alert-btn{background:var(--fill)}
-  .primary-link,.book-btn,.button,.btn-primary,.payment-hold,.payment-submitted>div,.success-mark,.court-art p{color:var(--on-lime)}
-  .court-visual span{background:#fff;color:#14509a}
-  .court-art{background:#24496d}.h1{background:#2d5f8c}.h2{background:#1f4f7d}.sun,.ball{background:#c9e27a}
-  .booking-card,.court-card,.rates-card,.mb-empty{background:var(--surface);border-color:var(--line)}
-  input,select,.payment-field input:not(.visually-hidden){background:var(--field);border-color:var(--line);color:var(--ink)}
-  .invalid input{background:#2a1714;border-color:#c0614c}
-  .court-tabs,.rates-row{border-color:var(--line)}
-  .slot,.slot.short,.day-chip,.court-card-btn,.payment-tabs button,.payment-qr-card #copy-payment-number,.calendar-btn,.mini-ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
-  .slot.booked{background:#121b26;border-color:#1c2735;color:#5f7286}.slot.booked small{color:#5f7286}
-  .day-chip.active span,.day-chip.active small{color:#cfe3f5}
-  .how,.courts{background:#111b28}
-  .court-type,.rate-tag b,.receipt-note,.proof-dropzone{background:var(--tint);color:var(--ink)}
-  .rate-tag.weekend b,.rates-row.weekend b:after,.payment-alert.last-call{background:var(--t-pending);color:var(--t-pending-ink)}
-  .rates-row.weekend b{color:var(--t-pending-ink)}
-  .form-error,.auth-error,.block-notice,.payment-alert.expired,.payment-alert.taken,.receipt-note.warn,.payment-hold.warning{background:var(--t-bad);color:var(--t-bad-ink)}
-  .block-notice strong{color:var(--ink)}
-  .auth-error.auth-ok,.receipt-note.filled{background:var(--t-ok);color:var(--t-ok-ink)}
-  .payment-hold.expired{background:var(--t-muted);color:var(--t-muted-ink)}
-  .field-error:not(.hidden){color:#ff9c86}
-  .payment-modal-header,.payment-modal-footer,.payment-summary,.payment-qr-card,.proof-preview{background:var(--surface);border-color:var(--line)}
-  .payment-tabs,.payment-tabs button+button{border-color:var(--line)}
-  .payment-qr{background:#fff;border-color:#fff}
-  .receipt-spinner{border-color:var(--line);border-top-color:var(--ink)}
-  #booking-dialog .sheet-grabber{background:#3a4d63}
-  .confirm-bar{background:rgba(22,33,48,.86);border-color:rgba(255,255,255,.08);box-shadow:0 14px 34px -10px #000c}
-  .cancel.confirming{background:#b43b25!important}
-  @media (prefers-reduced-transparency:reduce){.topbar{background:var(--cream)}.confirm-bar{background:var(--surface)}}
-  @media (prefers-contrast:more){.topbar{background:var(--cream);border-bottom:2px solid var(--ink)}.confirm-bar{background:var(--surface);border:2px solid var(--ink)}#booking-dialog{border:2px solid var(--ink)}}
+  :where(:root:not([data-theme="light"])) body{background:var(--cream);color:var(--ink)}
+  :where(:root:not([data-theme="light"])) dialog,:where(:root:not([data-theme="light"])) .mini-dialog,:where(:root:not([data-theme="light"])) .account-dialog{background:var(--surface);color:var(--ink);box-shadow:0 20px 80px #0008}
+  :where(:root:not([data-theme="light"])) dialog::backdrop,:where(:root:not([data-theme="light"])) #booking-dialog::backdrop{background:#050a12cc}
+  :where(:root:not([data-theme="light"])) .topbar,:where(:root:not([data-theme="light"])) header.topbar{border-color:var(--line)}
+  :where(:root:not([data-theme="light"])) .topbar{background:rgba(14,22,33,.78)}
+  :where(:root:not([data-theme="light"])) .topbar.scrolled{box-shadow:0 10px 24px -14px #000c}
+  :where(:root:not([data-theme="light"])) .profile-btn,:where(:root:not([data-theme="light"])) .hero,:where(:root:not([data-theme="light"])) .summary-card,:where(:root:not([data-theme="light"])) footer,:where(:root:not([data-theme="light"])) .site-footer,:where(:root:not([data-theme="light"])) .slot.selected,:where(:root:not([data-theme="light"])) .day-chip.active,:where(:root:not([data-theme="light"])) .payment-tabs button.active{background:var(--fill)}
+  :where(:root:not([data-theme="light"])) .slot.selected{border-color:var(--fill)}
+  :where(:root:not([data-theme="light"])) .day-chip.active{border-color:var(--sky)}
+  :where(:root:not([data-theme="light"])) .alert-btn{background:var(--fill)}
+  :where(:root:not([data-theme="light"])) .primary-link,:where(:root:not([data-theme="light"])) .book-btn,:where(:root:not([data-theme="light"])) .button,:where(:root:not([data-theme="light"])) .btn-primary,:where(:root:not([data-theme="light"])) .payment-hold,:where(:root:not([data-theme="light"])) .payment-submitted>div,:where(:root:not([data-theme="light"])) .success-mark,:where(:root:not([data-theme="light"])) .court-art p{color:var(--on-lime)}
+  :where(:root:not([data-theme="light"])) .court-visual span{background:#fff;color:#14509a}
+  :where(:root:not([data-theme="light"])) .court-art{background:#24496d}:where(:root:not([data-theme="light"])) .h1{background:#2d5f8c}:where(:root:not([data-theme="light"])) .h2{background:#1f4f7d}:where(:root:not([data-theme="light"])) .sun,:where(:root:not([data-theme="light"])) .ball{background:#c9e27a}
+  :where(:root:not([data-theme="light"])) .booking-card,:where(:root:not([data-theme="light"])) .court-card,:where(:root:not([data-theme="light"])) .rates-card,:where(:root:not([data-theme="light"])) .mb-empty{background:var(--surface);border-color:var(--line)}
+  :where(:root:not([data-theme="light"])) input,:where(:root:not([data-theme="light"])) select,:where(:root:not([data-theme="light"])) .payment-field input:not(.visually-hidden){background:var(--field);border-color:var(--line);color:var(--ink)}
+  :where(:root:not([data-theme="light"])) .invalid input{background:#2a1714;border-color:#c0614c}
+  :where(:root:not([data-theme="light"])) .court-tabs,:where(:root:not([data-theme="light"])) .rates-row{border-color:var(--line)}
+  :where(:root:not([data-theme="light"])) .slot,:where(:root:not([data-theme="light"])) .slot.short,:where(:root:not([data-theme="light"])) .day-chip,:where(:root:not([data-theme="light"])) .court-card-btn,:where(:root:not([data-theme="light"])) .payment-tabs button,:where(:root:not([data-theme="light"])) .payment-qr-card #copy-payment-number,:where(:root:not([data-theme="light"])) .calendar-btn,:where(:root:not([data-theme="light"])) .mini-ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
+  :where(:root:not([data-theme="light"])) .slot.booked{background:#121b26;border-color:#1c2735;color:#5f7286}:where(:root:not([data-theme="light"])) .slot.booked small{color:#5f7286}
+  :where(:root:not([data-theme="light"])) .day-chip.active span,:where(:root:not([data-theme="light"])) .day-chip.active small{color:#cfe3f5}
+  :where(:root:not([data-theme="light"])) .how,:where(:root:not([data-theme="light"])) .courts{background:#111b28}
+  :where(:root:not([data-theme="light"])) .court-type,:where(:root:not([data-theme="light"])) .rate-tag b,:where(:root:not([data-theme="light"])) .receipt-note,:where(:root:not([data-theme="light"])) .proof-dropzone{background:var(--tint);color:var(--ink)}
+  :where(:root:not([data-theme="light"])) .rate-tag.weekend b,:where(:root:not([data-theme="light"])) .rates-row.weekend b:after,:where(:root:not([data-theme="light"])) .payment-alert.last-call{background:var(--t-pending);color:var(--t-pending-ink)}
+  :where(:root:not([data-theme="light"])) .rates-row.weekend b{color:var(--t-pending-ink)}
+  :where(:root:not([data-theme="light"])) .form-error,:where(:root:not([data-theme="light"])) .auth-error,:where(:root:not([data-theme="light"])) .block-notice,:where(:root:not([data-theme="light"])) .payment-alert.expired,:where(:root:not([data-theme="light"])) .payment-alert.taken,:where(:root:not([data-theme="light"])) .receipt-note.warn,:where(:root:not([data-theme="light"])) .payment-hold.warning{background:var(--t-bad);color:var(--t-bad-ink)}
+  :where(:root:not([data-theme="light"])) .block-notice strong{color:var(--ink)}
+  :where(:root:not([data-theme="light"])) .auth-error.auth-ok,:where(:root:not([data-theme="light"])) .receipt-note.filled{background:var(--t-ok);color:var(--t-ok-ink)}
+  :where(:root:not([data-theme="light"])) .payment-hold.expired{background:var(--t-muted);color:var(--t-muted-ink)}
+  :where(:root:not([data-theme="light"])) .field-error:not(.hidden){color:#ff9c86}
+  :where(:root:not([data-theme="light"])) .payment-modal-header,:where(:root:not([data-theme="light"])) .payment-modal-footer,:where(:root:not([data-theme="light"])) .payment-summary,:where(:root:not([data-theme="light"])) .payment-qr-card,:where(:root:not([data-theme="light"])) .proof-preview{background:var(--surface);border-color:var(--line)}
+  :where(:root:not([data-theme="light"])) .payment-tabs,:where(:root:not([data-theme="light"])) .payment-tabs button+button{border-color:var(--line)}
+  :where(:root:not([data-theme="light"])) .payment-qr{background:#fff;border-color:#fff}
+  :where(:root:not([data-theme="light"])) .receipt-spinner{border-color:var(--line);border-top-color:var(--ink)}
+  :where(:root:not([data-theme="light"])) #booking-dialog .sheet-grabber{background:#3a4d63}
+  :where(:root:not([data-theme="light"])) .confirm-bar{background:rgba(22,33,48,.86);border-color:rgba(255,255,255,.08);box-shadow:0 14px 34px -10px #000c}
+  :where(:root:not([data-theme="light"])) .cancel.confirming{background:#b43b25!important}
+  @media (prefers-reduced-transparency:reduce){:where(:root:not([data-theme="light"])) .topbar{background:var(--cream)}:where(:root:not([data-theme="light"])) .confirm-bar{background:var(--surface)}}
+  @media (prefers-contrast:more){:where(:root:not([data-theme="light"])) .topbar{background:var(--cream);border-bottom:2px solid var(--ink)}:where(:root:not([data-theme="light"])) .confirm-bar{background:var(--surface);border:2px solid var(--ink)}:where(:root:not([data-theme="light"])) #booking-dialog{border:2px solid var(--ink)}}
   @media (hover:hover) and (pointer:fine){
-    .slot:hover,.day-chip:not(:disabled):not(.active):hover,.court-card-btn:hover,.outline:hover{background:var(--tint)}
-    .profile-btn:hover{background:#245da3}
-    .primary-link:hover,.book-btn:hover,.button:hover,.btn-primary:hover{background:#a0eea7}
+    :where(:root:not([data-theme="light"])) .slot:hover,:where(:root:not([data-theme="light"])) .day-chip:not(:disabled):not(.active):hover,:where(:root:not([data-theme="light"])) .court-card-btn:hover,:where(:root:not([data-theme="light"])) .outline:hover{background:var(--tint)}
+    :where(:root:not([data-theme="light"])) .profile-btn:hover{background:#245da3}
+    :where(:root:not([data-theme="light"])) .primary-link:hover,:where(:root:not([data-theme="light"])) .book-btn:hover,:where(:root:not([data-theme="light"])) .button:hover,:where(:root:not([data-theme="light"])) .btn-primary:hover{background:#a0eea7}
   }
 }
+
+  :root[data-theme="dark"]{color-scheme:dark;--ink:#e4eefa;--cream:#0e1621;--surface:#162130;--raised:#1b2838;--line:#2a3b50;--muted:#9db0c4;--sky:#7cc3f0;--fill:#1d4f8f;--field:#101a26;--on-lime:#0f2f57;
+    --t-pending:#3a3111;--t-pending-ink:#f2d578;--t-review:#3d2516;--t-review-ink:#ffb88f;--t-ok:#143522;--t-ok-ink:#9fe6ad;--t-info:#13304d;--t-info-ink:#a9d4ff;--t-bad:#3d1d16;--t-bad-ink:#ffab97;--t-muted:#243039;--t-muted-ink:#b7c3ce;--tint:#1b2a3c}
+  :where(:root[data-theme="dark"]) body{background:var(--cream);color:var(--ink)}
+  :where(:root[data-theme="dark"]) dialog,:where(:root[data-theme="dark"]) .mini-dialog,:where(:root[data-theme="dark"]) .account-dialog{background:var(--surface);color:var(--ink);box-shadow:0 20px 80px #0008}
+  :where(:root[data-theme="dark"]) dialog::backdrop,:where(:root[data-theme="dark"]) #booking-dialog::backdrop{background:#050a12cc}
+  :where(:root[data-theme="dark"]) .topbar,:where(:root[data-theme="dark"]) header.topbar{border-color:var(--line)}
+  :where(:root[data-theme="dark"]) .topbar{background:rgba(14,22,33,.78)}
+  :where(:root[data-theme="dark"]) .topbar.scrolled{box-shadow:0 10px 24px -14px #000c}
+  :where(:root[data-theme="dark"]) .profile-btn,:where(:root[data-theme="dark"]) .hero,:where(:root[data-theme="dark"]) .summary-card,:where(:root[data-theme="dark"]) footer,:where(:root[data-theme="dark"]) .site-footer,:where(:root[data-theme="dark"]) .slot.selected,:where(:root[data-theme="dark"]) .day-chip.active,:where(:root[data-theme="dark"]) .payment-tabs button.active{background:var(--fill)}
+  :where(:root[data-theme="dark"]) .slot.selected{border-color:var(--fill)}
+  :where(:root[data-theme="dark"]) .day-chip.active{border-color:var(--sky)}
+  :where(:root[data-theme="dark"]) .alert-btn{background:var(--fill)}
+  :where(:root[data-theme="dark"]) .primary-link,:where(:root[data-theme="dark"]) .book-btn,:where(:root[data-theme="dark"]) .button,:where(:root[data-theme="dark"]) .btn-primary,:where(:root[data-theme="dark"]) .payment-hold,:where(:root[data-theme="dark"]) .payment-submitted>div,:where(:root[data-theme="dark"]) .success-mark,:where(:root[data-theme="dark"]) .court-art p{color:var(--on-lime)}
+  :where(:root[data-theme="dark"]) .court-visual span{background:#fff;color:#14509a}
+  :where(:root[data-theme="dark"]) .court-art{background:#24496d}:where(:root[data-theme="dark"]) .h1{background:#2d5f8c}:where(:root[data-theme="dark"]) .h2{background:#1f4f7d}:where(:root[data-theme="dark"]) .sun,:where(:root[data-theme="dark"]) .ball{background:#c9e27a}
+  :where(:root[data-theme="dark"]) .booking-card,:where(:root[data-theme="dark"]) .court-card,:where(:root[data-theme="dark"]) .rates-card,:where(:root[data-theme="dark"]) .mb-empty{background:var(--surface);border-color:var(--line)}
+  :where(:root[data-theme="dark"]) input,:where(:root[data-theme="dark"]) select,:where(:root[data-theme="dark"]) .payment-field input:not(.visually-hidden){background:var(--field);border-color:var(--line);color:var(--ink)}
+  :where(:root[data-theme="dark"]) .invalid input{background:#2a1714;border-color:#c0614c}
+  :where(:root[data-theme="dark"]) .court-tabs,:where(:root[data-theme="dark"]) .rates-row{border-color:var(--line)}
+  :where(:root[data-theme="dark"]) .slot,:where(:root[data-theme="dark"]) .slot.short,:where(:root[data-theme="dark"]) .day-chip,:where(:root[data-theme="dark"]) .court-card-btn,:where(:root[data-theme="dark"]) .payment-tabs button,:where(:root[data-theme="dark"]) .payment-qr-card #copy-payment-number,:where(:root[data-theme="dark"]) .calendar-btn,:where(:root[data-theme="dark"]) .mini-ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
+  :where(:root[data-theme="dark"]) .slot.booked{background:#121b26;border-color:#1c2735;color:#5f7286}:where(:root[data-theme="dark"]) .slot.booked small{color:#5f7286}
+  :where(:root[data-theme="dark"]) .day-chip.active span,:where(:root[data-theme="dark"]) .day-chip.active small{color:#cfe3f5}
+  :where(:root[data-theme="dark"]) .how,:where(:root[data-theme="dark"]) .courts{background:#111b28}
+  :where(:root[data-theme="dark"]) .court-type,:where(:root[data-theme="dark"]) .rate-tag b,:where(:root[data-theme="dark"]) .receipt-note,:where(:root[data-theme="dark"]) .proof-dropzone{background:var(--tint);color:var(--ink)}
+  :where(:root[data-theme="dark"]) .rate-tag.weekend b,:where(:root[data-theme="dark"]) .rates-row.weekend b:after,:where(:root[data-theme="dark"]) .payment-alert.last-call{background:var(--t-pending);color:var(--t-pending-ink)}
+  :where(:root[data-theme="dark"]) .rates-row.weekend b{color:var(--t-pending-ink)}
+  :where(:root[data-theme="dark"]) .form-error,:where(:root[data-theme="dark"]) .auth-error,:where(:root[data-theme="dark"]) .block-notice,:where(:root[data-theme="dark"]) .payment-alert.expired,:where(:root[data-theme="dark"]) .payment-alert.taken,:where(:root[data-theme="dark"]) .receipt-note.warn,:where(:root[data-theme="dark"]) .payment-hold.warning{background:var(--t-bad);color:var(--t-bad-ink)}
+  :where(:root[data-theme="dark"]) .block-notice strong{color:var(--ink)}
+  :where(:root[data-theme="dark"]) .auth-error.auth-ok,:where(:root[data-theme="dark"]) .receipt-note.filled{background:var(--t-ok);color:var(--t-ok-ink)}
+  :where(:root[data-theme="dark"]) .payment-hold.expired{background:var(--t-muted);color:var(--t-muted-ink)}
+  :where(:root[data-theme="dark"]) .field-error:not(.hidden){color:#ff9c86}
+  :where(:root[data-theme="dark"]) .payment-modal-header,:where(:root[data-theme="dark"]) .payment-modal-footer,:where(:root[data-theme="dark"]) .payment-summary,:where(:root[data-theme="dark"]) .payment-qr-card,:where(:root[data-theme="dark"]) .proof-preview{background:var(--surface);border-color:var(--line)}
+  :where(:root[data-theme="dark"]) .payment-tabs,:where(:root[data-theme="dark"]) .payment-tabs button+button{border-color:var(--line)}
+  :where(:root[data-theme="dark"]) .payment-qr{background:#fff;border-color:#fff}
+  :where(:root[data-theme="dark"]) .receipt-spinner{border-color:var(--line);border-top-color:var(--ink)}
+  :where(:root[data-theme="dark"]) #booking-dialog .sheet-grabber{background:#3a4d63}
+  :where(:root[data-theme="dark"]) .confirm-bar{background:rgba(22,33,48,.86);border-color:rgba(255,255,255,.08);box-shadow:0 14px 34px -10px #000c}
+  :where(:root[data-theme="dark"]) .cancel.confirming{background:#b43b25!important}
+  @media (prefers-reduced-transparency:reduce){:where(:root[data-theme="dark"]) .topbar{background:var(--cream)}:where(:root[data-theme="dark"]) .confirm-bar{background:var(--surface)}}
+  @media (prefers-contrast:more){:where(:root[data-theme="dark"]) .topbar{background:var(--cream);border-bottom:2px solid var(--ink)}:where(:root[data-theme="dark"]) .confirm-bar{background:var(--surface);border:2px solid var(--ink)}:where(:root[data-theme="dark"]) #booking-dialog{border:2px solid var(--ink)}}
+  @media (hover:hover) and (pointer:fine){
+    :where(:root[data-theme="dark"]) .slot:hover,:where(:root[data-theme="dark"]) .day-chip:not(:disabled):not(.active):hover,:where(:root[data-theme="dark"]) .court-card-btn:hover,:where(:root[data-theme="dark"]) .outline:hover{background:var(--tint)}
+    :where(:root[data-theme="dark"]) .profile-btn:hover{background:#245da3}
+    :where(:root[data-theme="dark"]) .primary-link:hover,:where(:root[data-theme="dark"]) .book-btn:hover,:where(:root[data-theme="dark"]) .button:hover,:where(:root[data-theme="dark"]) .btn-primary:hover{background:#a0eea7}
+  }
+
 
 /* ---------- Get the app card + offline notice ---------- */
 .install-slot:empty{display:none}
@@ -263,3 +310,15 @@ input,select{font-size:1rem}
 .offline-notice{position:fixed;z-index:60;left:50%;top:calc(env(safe-area-inset-top) + 10px);max-width:calc(100vw - 32px);padding:9px 14px;border-radius:99px;background:#23364d;color:#fff;font:600 0.8125rem/1.3 Outfit,system-ui,sans-serif;text-align:center;box-shadow:0 10px 30px #0b2c5a40;opacity:0;transform:translate(-50%,-8px);transition:opacity 200ms cubic-bezier(.23,1,.32,1),transform 200ms cubic-bezier(.23,1,.32,1);pointer-events:none}
 .offline-notice.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.offline-notice{transform:translate(-50%,0)}}
+
+/* ---------- Appearance: Light / Dark / Auto (in the account menu) ---------- */
+.theme-slot{margin:18px 0 14px;text-align:left}
+.theme-label{margin:0 0 6px;font:600 0.6875rem Outfit;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.theme-switch{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:var(--r-control);background:color-mix(in srgb,var(--muted) 14%,transparent)}
+.theme-switch button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border:0;border-radius:6px;background:transparent;color:var(--muted);font:600 0.875rem Outfit;cursor:pointer;touch-action:manipulation;transition:background-color 150ms ease,color 150ms ease}
+.theme-switch button[aria-checked="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px #0b2c5a24}
+.theme-switch button:active{transform:scale(.97)}
+.theme-hint{margin:6px 0 0;font-size:0.75rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.theme-switch button{transition:none}}
+@media (prefers-color-scheme:dark){:where(:root:not([data-theme="light"])) .theme-switch button[aria-checked="true"]{background:#26384f;box-shadow:none}}
+:where(:root[data-theme="dark"]) .theme-switch button[aria-checked="true"]{background:#26384f;box-shadow:none}

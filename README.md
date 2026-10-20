@@ -145,7 +145,7 @@ In Realtime Database **Rules → Rules Playground**, simulate a signed-in normal
   - **Export CSV**: every booking between two dates, with a paid total, for Excel or Google Sheets.
 - `staff-tools.html` forwards to `admin.html`.
 
-All three pages switch to dark mode when the phone or computer is set to dark.
+All three pages follow the phone or computer's light or dark setting (Auto). Customers can choose **Light**, **Dark** or **Auto** in the account menu; staff have a sun/moon button in the top bar of the dashboard. The choice is remembered on that device. Dark styles are written twice in the CSS, once for Auto and once for a manual Dark choice. If you change a dark colour, change it in both copies.
 
 Walk-ins are written one hour at a time, which is what the rules above allow. The app checks the hours are free just before writing; before a public launch with heavy traffic, consider moving booking creation to a Cloud Function so the server can reserve multi-hour slots atomically.
 
