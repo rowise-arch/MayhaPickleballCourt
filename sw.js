@@ -4,10 +4,11 @@
    - Images and fonts: shown from the saved copy straight away and refreshed in the background.
    - Firebase (bookings, sign-in, payments) is never cached here; it always talks to the live database.
    Change VERSION only if you want every phone to throw away its saved copy and start fresh. */
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = `mayha-${VERSION}`;
 const SHELL = [
   "./", "./index.html", "./my-bookings.html", "./admin.html",
+  "./fonts.css", "./fonts/bitter-700-ext.woff2", "./fonts/bitter-700.woff2", "./fonts/bitter-800-ext.woff2", "./fonts/bitter-800.woff2", "./fonts/outfit-400-ext.woff2", "./fonts/outfit-400.woff2", "./fonts/outfit-500-ext.woff2", "./fonts/outfit-500.woff2", "./fonts/outfit-600-ext.woff2", "./fonts/outfit-600.woff2", "./fonts/outfit-700-ext.woff2", "./fonts/outfit-700.woff2", "./fonts/outfit-800-ext.woff2", "./fonts/outfit-800.woff2",
   "./styles.css", "./auth.css", "./branding.css", "./duration.css", "./brand-theme.css", "./payments.css", "./polish.css",
   "./my-bookings.css", "./my-bookings-payment.css", "./admin.css",
   "./site-config.js", "./app.js", "./my-bookings.js", "./my-bookings-payments.js", "./admin.js",

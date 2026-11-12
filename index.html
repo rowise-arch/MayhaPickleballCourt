@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0e1621" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f3f8fc">
     <!-- Link previews on Facebook, Messenger and Viber. Change the URLs here if you move to your own domain. -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Mayha Square Pickleball Court">
@@ -26,9 +27,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <title>Mayha Square Pickleball Court</title>
     <meta name="description" content="Book one of four open-air pickleball courts at Mayha Square. ₱120–₱200 per hour, pay with GCash." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="preload" href="./fonts/outfit-500.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="./fonts.css">
     <link rel="icon" href="./mayha-logo-64.png" type="image/png" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./auth.css" />
@@ -82,10 +82,10 @@
               <label class="notes-field">BOOKING NOTE <input id="booking-note" type="text" maxlength="140" enterkeyhint="done" placeholder="Optional request or note" /></label>
             </div>
             <div class="court-tabs" role="tablist" aria-label="Court selection">
-              <button class="court-tab active" data-court="Court 1">Court 1 <small>Open air</small></button>
-              <button class="court-tab" data-court="Court 2">Court 2 <small>Open air</small></button>
-              <button class="court-tab" data-court="Court 3">Court 3 <small>Open air</small></button>
-              <button class="court-tab" data-court="Court 4">Court 4 <small>Open air</small></button>
+              <button type="button" class="court-tab active" data-court="Court 1" id="tab-court-1" aria-controls="time-grid" tabindex="0">Court 1 <small>Open air</small></button>
+              <button type="button" class="court-tab" data-court="Court 2" id="tab-court-2" aria-controls="time-grid" tabindex="-1">Court 2 <small>Open air</small></button>
+              <button type="button" class="court-tab" data-court="Court 3" id="tab-court-3" aria-controls="time-grid" tabindex="-1">Court 3 <small>Open air</small></button>
+              <button type="button" class="court-tab" data-court="Court 4" id="tab-court-4" aria-controls="time-grid" tabindex="-1">Court 4 <small>Open air</small></button>
             </div>
             <div class="block-notice hidden" id="block-notice"></div>
             <div class="time-groups" id="time-grid"></div>

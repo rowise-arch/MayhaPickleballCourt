@@ -64,7 +64,7 @@ body{margin:0;background:var(--cream);color:var(--ink);font:400 0.9375rem/1.45 O
 @keyframes shimmer{to{background-position:-200% 0}}
 
 /* Account dialog */
-.mini-dialog{width:min(340px,90vw);padding:22px;border:0;border-radius:var(--r-dialog);color:var(--ink);box-shadow:0 20px 60px #0b2c5a55}
+.mini-dialog{width:min(340px,90vw);padding:22px;border:0;border-radius:var(--r-dialog);color:var(--ink);box-shadow:0 20px 60px #0000004d}
 .mini-dialog::backdrop{background:#14509a80}
 .mini-label{margin:0;font-size:0.75rem;font-weight:600;color:var(--muted)}
 .mini-email{margin:2px 0 18px;font-weight:700;word-break:break-all}
@@ -73,7 +73,7 @@ body{margin:0;background:var(--cream);color:var(--ink);font:400 0.9375rem/1.45 O
 .mini-ghost{padding:10px 14px;border:1px solid #b7cfe2;border-radius:var(--r-control);background:#fff;color:var(--ink);font:700 0.875rem Outfit,sans-serif;cursor:pointer}
 
 /* Toast */
-.mb-toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));z-index:50;max-width:min(92vw,420px);padding:11px 16px;border-radius:10px;background:#0f2f57;color:#fff;font-size:0.875rem;font-weight:600;box-shadow:0 10px 30px #0b2c5a40;opacity:0;transform:translate(-50%,8px);pointer-events:none;transition:opacity 180ms var(--ease-out),transform 180ms var(--ease-out)}
+.mb-toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));z-index:50;max-width:min(92vw,420px);padding:11px 16px;border-radius:10px;background:#0f2f57;color:#fff;font-size:0.875rem;font-weight:600;box-shadow:0 10px 30px #00000040;opacity:0;transform:translate(-50%,8px);pointer-events:none;transition:opacity 180ms var(--ease-out),transform 180ms var(--ease-out)}
 .mb-toast.show{opacity:1;transform:translate(-50%,0)}
 .mb-toast[data-tone="error"]{background:#a33b23}
 
@@ -81,7 +81,7 @@ body{margin:0;background:var(--cream);color:var(--ink);font:400 0.9375rem/1.45 O
   .bk-link:hover{text-decoration-color:var(--ink)}
   .bk-cancel:hover{background:#fff0eb}
   .mb-book-link:hover{color:var(--sky)}
-  .btn-primary:hover{background:#a0eea7}
+  .btn-primary:hover{background:#a0eea7;color:var(--on-lime,var(--ink))}
   .mb-past summary:hover{color:var(--ink)}
 }
 @media(prefers-reduced-motion:reduce){.bk.skeleton i{animation:none}.mb-toast,.mb-toast.show{transform:translate(-50%,0)}}
